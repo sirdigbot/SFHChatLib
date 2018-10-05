@@ -4,7 +4,7 @@
 A set of shortcut functions to print coloured messages to chat with a prepended `[SM]` tag, which can be customised.  
 Automatically removes colours when printing to rcon/console.  
 
-*Colours and Core Functionality are from an included version of [MoreColors](https://forums.alliedmods.net/showthread.php?t=185016). modified for Sourcemod 1.7+ support*  
+*Colours and Core Functionality are from an included version of [MoreColors](https://forums.alliedmods.net/showthread.php?t=185016) modified for Sourcemod 1.7+ support.*  
 
 The *\_Ex* natives are essentially identical, but with support for `{teamcolor}`  
 
