@@ -1,0 +1,24 @@
+"Phrases"
+{
+  "SFHCL_PluginLoaded"
+  {
+    "en" "Loaded Satan's Fun House - Chat Library"
+  }
+  "SFHCL_TestsLoaded"
+  {
+    "en" "Loaded Satan's Fun House - Chat Library Tests"
+  }
+  "SFHCL_TestInGame"
+  {
+    "en" "This command must be used through ingame chat."
+  }
+  "SFHCL_FormatError"
+  {
+    "#format" "{1:s}"
+    "en" "FormatNativeString Failed in native {1}"
+  }
+  "SFHCL_Usage"
+  {
+    "en" "Usage"
+  }
+}

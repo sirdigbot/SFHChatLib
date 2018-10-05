@@ -1,0 +1,9 @@
+# Ignore Compiler Stuff
+/sourcemod/scripting/**
+
+# Keep Only These
+!/sourcemod/scripting/include/
+!/sourcemod/scripting/include/sfp_chatlib.inc
+!/sourcemod/scripting/include/morecolors_new.inc
+!/sourcemod/scripting/sfh_chatlib.sp
+!/sourcemod/scripting/sfh_chatlib_tests.sp

@@ -1,0 +1,23 @@
+"Updater"
+{
+  "Information"
+  {
+    "Version"
+    {
+      "Latest" "1.0.0"
+      "Previous" "0.0.0"
+    }
+
+    "Notes" "Initial Release"
+  }
+
+  "Files"
+  {
+    "Plugin" "Path_SM/plugins/sfp_chatlib.smx"
+    "Plugin" "Path_SM/translations/sfp.chatlib.phrases.txt"
+
+    "Source" "Path_SM/scripting/sfp_chatlib.sp"
+    "Source" "Path_SM/scripting/include/sfp_chatlib.inc"
+    "Source" "Path_SM/scripting/include/morecolors_new.inc"
+  }
+}
