@@ -103,19 +103,19 @@ public Action CMD_TestFilter(int client, int args)
   PrintToChat(client, "\\x04Lime \\x03Team \\x05Olive \\x01Default \\x07AA0000 \\x08AA00AA77 \\x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold");
   PrintToChat(client, "------");
   
-  char str1 = "Rem All: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n---\n";
-  char str2 = "Rem Single: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n---\n";
-  char str3 = "Rem Multi: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n---\n";
-  char str4 = "Rem MC: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n------";
+  char str1[] = "Rem All: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n---\n";
+  char str2[] = "Rem Single: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n---\n";
+  char str3[] = "Rem Multi: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n---\n";
+  char str4[] = "Rem MC: \x04Lime \x03Team \x05Olive \x01Default \x07AA0000 \x08AA00AA77 \x06Gold\x01 -- {cyan}Cyan {invlid}Invalid {gold}Gold\n------";
   SFHCL_RemoveColours(str1, true,   true,   true);
   SFHCL_RemoveColours(str2, true,   false,  false);
   SFHCL_RemoveColours(str3, false,  true,   false);
   SFHCL_RemoveColours(str4, false,  false,  true);
   
-  PrintToChatEx(client, client, str1); // Note the "\n---\n" at the end of each
-  PrintToChatEx(client, client, str2);
-  PrintToChatEx(client, client, str3);
-  PrintToChatEx(client, client, str4);
+  PrintToChat(client, str1); // Note the "\n---\n" at the end of each
+  PrintToChat(client, str2);
+  PrintToChat(client, str3);
+  PrintToChat(client, str4);
   return Plugin_Handled;
 }
 
@@ -133,7 +133,7 @@ public Action CMD_TestPrints(int client, int args)
   }
 
   char arg1[MAX_NAME_LENGTH], arg2[MAX_NAME_LENGTH], arg3[24];
-  char argFull;
+  char argFull[256];
   
   GetCmdArg(1, arg1, sizeof(arg1));
   GetCmdArg(2, arg2, sizeof(arg2));

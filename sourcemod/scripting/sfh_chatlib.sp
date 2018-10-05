@@ -134,7 +134,7 @@ public void UpdateCvars(Handle cvar, const char[] oldValue, const char[] newValu
 
 
 
-public void Native_TagReply(Handle plugin, int numParams)
+public int Native_TagReply(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int len;
@@ -168,7 +168,7 @@ public void Native_TagReply(Handle plugin, int numParams)
 }
 
 
-public void Native_TagReplyEx(Handle plugin, int numParams)
+public int Native_TagReplyEx(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
@@ -204,7 +204,7 @@ public void Native_TagReplyEx(Handle plugin, int numParams)
 
 
 
-public void Native_TagReplyUsage(Handle plugin, int numParams)
+public int Native_TagReplyUsage(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int len;
@@ -237,7 +237,7 @@ public void Native_TagReplyUsage(Handle plugin, int numParams)
   return;
 }
 
-public void Native_TagReplyUsageEx(Handle plugin, int numParams)
+public int Native_TagReplyUsageEx(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
@@ -273,7 +273,7 @@ public void Native_TagReplyUsageEx(Handle plugin, int numParams)
 
 
 
-public void Native_TagPrintChat(Handle plugin, int numParams)
+public int Native_TagPrintChat(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int len;
@@ -298,7 +298,7 @@ public void Native_TagPrintChat(Handle plugin, int numParams)
   return;
 }
 
-public void Native_TagPrintChatEx(Handle plugin, int numParams)
+public int Native_TagPrintChatEx(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
@@ -325,7 +325,7 @@ public void Native_TagPrintChatEx(Handle plugin, int numParams)
 }
 
 
-public void Native_TagPrintChatAll(Handle plugin, int numParams)
+public int Native_TagPrintChatAll(Handle plugin, int numParams)
 {
   int len;
   int written;
@@ -350,7 +350,7 @@ public void Native_TagPrintChatAll(Handle plugin, int numParams)
 }
 
 
-public void Native_TagPrintChatAllEx(Handle plugin, int numParams)
+public int Native_TagPrintChatAllEx(Handle plugin, int numParams)
 {
   int author = GetNativeCell(1);
   int len;
@@ -377,7 +377,7 @@ public void Native_TagPrintChatAllEx(Handle plugin, int numParams)
 
 
 
-public void Native_TagActivity2(Handle plugin, int numParams)
+public int Native_TagActivity2(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int len;
@@ -397,20 +397,17 @@ public void Native_TagActivity2(Handle plugin, int numParams)
   }
 
   // Add a space after the tag so it looks right in chat: "[SM] Admin: <Msg>"
-  int size        = sizeof(DEFAULT_TAG);
-  bool tagIsEmpty = (strlen(g_szTag) <= 0);
+  int size    = strlen(DEFAULT_TAG) + 1;  // Size + '\0'
+  int tagSize = strlen(g_szTag) + 1;      // Also Size + '\0'.
   
-  // Get EXACT sizeof() of the tag we will be appending to
-  if(!tagIsEmpty)
-  {
-    int tagSizeOf = strlen(g_szTag) + 1;
-    size = (size > tagSizeOf) ? size : tagSizeOf;
-  }
+  // Get EXACT sizeof() of the bigger tag string (which we will append to)
+  if(tagSize > 1)
+    size = (size > tagSize) ? size : tagSize;
   
   // Create string that is full tag + 1 space
   char[] tagBuff = new char[size + 1];
-  strcopy(tagBuff, size, (tagIsEmpty) ? DEFAULT_TAG : g_szTag);
-  tagBuff[size] = " ";
+  strcopy(tagBuff, size, (tagSize <= 1) ? DEFAULT_TAG : g_szTag);
+  tagBuff[size] = ' ';
   
   
   // No need to clean message. Engine Handles it I believe.
@@ -422,7 +419,7 @@ public void Native_TagActivity2(Handle plugin, int numParams)
 }
 
 
-public void Native_TagActivityEx(Handle plugin, int numParams)
+public int Native_TagActivityEx(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int len;
@@ -442,20 +439,17 @@ public void Native_TagActivityEx(Handle plugin, int numParams)
   }
 
   // Add a space after the tag so it looks right in chat: "[SM] Admin: <Msg>"
-  int size        = sizeof(DEFAULT_TAG);
-  bool tagIsEmpty = (strlen(g_szTag) <= 0);
+  int size    = strlen(DEFAULT_TAG) + 1;  // Size + '\0'
+  int tagSize = strlen(g_szTag) + 1;      // Also Size + '\0'
   
-  // Get EXACT sizeof() of the tag we will be appending to
-  if(!tagIsEmpty)
-  {
-    int tagSizeOf = strlen(g_szTag) + 1;
-    size = (size > tagSizeOf) ? size : tagSizeOf;
-  }
+  // Get EXACT sizeof() of the bigger tag string (which we will append to)
+  if(tagSize > 1)
+    size = (size > tagSize) ? size : tagSize;
   
   // Create string that is full tag + 1 space
   char[] tagBuff = new char[size + 1];
-  strcopy(tagBuff, size, (tagIsEmpty) ? DEFAULT_TAG : g_szTag);
-  tagBuff[size] = " ";
+  strcopy(tagBuff, size, (tagSize <= 1) ? DEFAULT_TAG : g_szTag);
+  tagBuff[size] = ' ';
   
   
   // No need to clean message. Engine Handles it I believe.
@@ -468,7 +462,7 @@ public void Native_TagActivityEx(Handle plugin, int numParams)
 
 
 
-public void Native_TagPrintServer(Handle plugin, int numParams)
+public int Native_TagPrintServer(Handle plugin, int numParams)
 {
   int len;
   int written;
@@ -500,7 +494,7 @@ public void Native_TagPrintServer(Handle plugin, int numParams)
 
 
 
-public void Native_TagPrintToClient(Handle plugin, int numParams)
+public int Native_TagPrintToClient(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int len;
@@ -538,7 +532,7 @@ public void Native_TagPrintToClient(Handle plugin, int numParams)
   return;
 }
 
-public void Native_TagPrintToClientEx(Handle plugin, int numParams)
+public int Native_TagPrintToClientEx(Handle plugin, int numParams)
 {
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
@@ -585,7 +579,7 @@ public int Native_SFHCL_RemoveColours(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
   
   // Get string
   char[] strBuff = new char[len]; 
@@ -602,7 +596,7 @@ public int Native_SFHCL_RemoveColours(Handle plugin, int numParams)
 }
 
 
-public bool Native_SFHCL_IsSingleByteColour(Handle plugin, int numParams)
+public int Native_SFHCL_IsSingleByteColour(Handle plugin, int numParams)
 {
   return IsSingleByteColour(GetNativeCell(1));
 }
@@ -692,7 +686,7 @@ stock int RemoveChatColours(char[] str,
   
   // Replace all instances of 0x01/removalByte
   // TODO: Verify if doing this manually is faster/more efficient
-  char[2] dummyString = {removalByte, '\0'};              // Must use char[] in ReplaceString
+  char dummyString[2] = removalByte; // Must use char[] in ReplaceString
   return ReplaceString(str, maxlength, dummyString, "", true);
 }
 
