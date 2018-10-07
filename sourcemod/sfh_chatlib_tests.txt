@@ -13,8 +13,8 @@
 
   "Files"
   {
-    "Plugin" "Path_SM/plugins/sfp_chatlib_tests.smx"
+    "Plugin" "Path_SM/plugins/sfh_chatlib_tests.smx"
 
-    "Source" "Path_SM/scripting/sfp_chatlib_tests.sp"
+    "Source" "Path_SM/scripting/sfh_chatlib_tests.sp"
   }
 }

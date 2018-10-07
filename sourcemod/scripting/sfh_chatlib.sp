@@ -21,7 +21,7 @@
 
 //=================================
 // Constants
-#define PLUGIN_VERSION  "1.0.0"
+#define PLUGIN_VERSION  "1.0.1"
 #define PLUGIN_URL      "https://sirdigbot.github.io/SFHChatLib/"
 #define UPDATE_URL      "https://sirdigbot.github.io/SFHChatLib/sourcemod/sfh_chatlib.txt"
 
@@ -100,7 +100,9 @@ public void OnPluginStart()
   LoadTranslations("common.phrases");
   LoadTranslations("core.phrases");
   
-  h_bUpdate = CreateConVar("sm_sfh_chatlib_update", "1", "Update Satan's Fun Pack - Chat Library Automatically (Requires Updater)\n(Default: 1)", FCVAR_NONE, true, 0.0, true, 1.0);
+  CreateConVar("satansfunhouse_chat_version", PLUGIN_VERSION, "Satan's Fun House - Chat Library version. Do Not Touch!", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+  
+  h_bUpdate = CreateConVar("sm_sfh_chatlib_update", "1", "Update Satan's Fun House - Chat Library Automatically (Requires Updater)\n(Default: 1)", FCVAR_NONE, true, 0.0, true, 1.0);
   g_bUpdate = GetConVarBool(h_bUpdate);
   HookConVarChange(h_bUpdate, UpdateCvars);
   
