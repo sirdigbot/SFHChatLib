@@ -20,7 +20,7 @@ The *\_Ex* natives are essentially identical, but with support for `{teamcolor}`
 
 ## TagReply*
 
-```
+```sourcepawn
 /**
  * Prepends CReplyToCommand with a coloured command ("[SM]") tag.
  * Removes colour if printing to console.
@@ -70,7 +70,7 @@ native void TagReplyUsageEx(const int client, const int author, const char[] msg
 
 ## TagPrintToChat*
 
-```
+```sourcepawn
 /**
  * Prepends CPrintToChat with a coloured command ("[SM]") tag.
  *
@@ -114,7 +114,7 @@ native void TagPrintChatAllEx(const int author, const char[] msg, any ...);
 
 ## TagActivity*
 
-```
+```sourcepawn
 /**
  * Prepends CShowActivity2 with a coloured command ("[SM]") tag.
  *
@@ -143,7 +143,7 @@ native void TagActivityEx(const int client, const char[] msg, any ...);
 
 ## TagPrint*
 
-```
+```sourcepawn
 /**
  * Prepends PrintToServer with a command ("[SM]") tag.
  *
@@ -182,7 +182,7 @@ native void TagPrintToClientEx(const int client, const int author, const char[] 
 
 ## Misc
 
-```
+```sourcepawn
 /**
  * Remove all the source-engine-native chat colours from a string (TF2 Only).
  * Specifically this can remove:
