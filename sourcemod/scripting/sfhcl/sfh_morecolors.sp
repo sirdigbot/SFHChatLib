@@ -5,8 +5,8 @@
  *                                                                     *
  * Copyright (C) 2018 SirDigbot                                        *
  ***********************************************************************/
- 
- 
+
+
 //=================================
 // MoreColors 1.9.1 Reimplementation
 //
@@ -14,6 +14,13 @@
 // Part of sfh_chatlib.sp
 // Wont compile on its own.
 //=================================
+
+#if defined _sfh_morecolors_included
+ #endinput
+#endif
+
+#define _sfh_morecolors_included
+
 
 
 #define MORE_COLORS_VERSION   "1.9.1-sfhcl"
@@ -61,7 +68,7 @@ static StringMap g_Colors;
 static int g_TeamColors[][] = {
   {COLOR_GRAY, COLOR_RED, COLOR_BLUE},  // GAME_DEFAULT. Here for completeness with CGetTeamColor
   {COLOR_GRAY, 0x4D7942, COLOR_RED}     // GAME_DODS
-}
+};
 
 
 UserMsg         g_SayTextMsgId;
@@ -74,13 +81,14 @@ UserMessageType g_UserMsgType;
 // Called in sfh_chatlib.sp
 
 
-void SFHCL_MC_InitGlobals()
+void SFHCL_MC_OnPluginStart()
 {
   g_SayTextMsgId = GetUserMessageId("SayText2");
   if(GetFeatureStatus(FeatureType_Native, "GetUserMessageType") == FeatureStatus_Available)
     g_UserMsgType = GetUserMessageType();
   else
     g_UserMsgType = UM_BitBuf; // Safe default. Only newer games use ProtoBuf.
+  return;
 }
 
 
@@ -100,8 +108,9 @@ void SFHCL_MC_CreateNatives()
   CreateNative("CColorExists",        Native_CColorExists);
   CreateNative("CGetTeamColor",       Native_CGetTeamColor);
   CreateNative("CAddColor",           Native_CAddColor);
-  CreateNative("CRemoveTags"),        Native_CRemoveTags);
-  CreateNative("CReplaceColorCodes"), Native_CReplaceColorCodes);
+  CreateNative("CRemoveTags",         Native_CRemoveTags);
+  CreateNative("CReplaceColorCodes",  Native_CReplaceColorCodes);
+  return;
 }
 
 
@@ -115,6 +124,7 @@ public int Native_CPrintToChat(Handle plugin, int numParams)
 {
   // Get and Verify client
   int client = GetNativeCell(1);
+  
   if(client < 1 || client > MaxClients)     // Can't PrintTochat the server
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
   if(!IsClientInGame(client))
@@ -128,9 +138,9 @@ public int Native_CPrintToChat(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChat");
 
   Internal_InitColors();
-  Internal_ReplaceColors(message);
+  Internal_ReplaceColors(message, sizeof(message));
   Internal_SendMessage(client, message);
-  return;
+  return 0;
 }
 
 
@@ -143,7 +153,7 @@ public int Native_CPrintToChatAll(Handle plugin, int numParams)
   
   for(int i = 1; i <= MaxClients; ++i)
   {
-    if(!IsClientInGame(i)) || g_SkipList[i])
+    if(!IsClientInGame(i) || g_SkipList[i])
     {
       g_SkipList[i] = false;
       continue;
@@ -153,10 +163,10 @@ public int Native_CPrintToChatAll(Handle plugin, int numParams)
     if(FormatNativeString(0, 1, 2, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
       return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAll");
 
-    Internal_ReplaceColors(message);
+    Internal_ReplaceColors(message, sizeof(message));
     Internal_SendMessage(i, message);
   }
-  return;
+  return 0;
 }
 
 
@@ -186,9 +196,9 @@ public int Native_CPrintToChatEx(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
 
   Internal_InitColors();
-  Internal_ReplaceColors(message, author);
+  Internal_ReplaceColors(message, sizeof(message));
   Internal_SendMessage(client, message, author);
-  return;
+  return 0;
 }
 
 
@@ -208,7 +218,7 @@ public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
   
   for(int i = 1; i <= MaxClients; ++i)
   {
-    if(!IsClientInGame(i)) || g_SkipList[i])
+    if(!IsClientInGame(i) || g_SkipList[i])
     {
       g_SkipList[i] = false;
       continue;
@@ -218,10 +228,10 @@ public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
     if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
       return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAllEx");
 
-    Internal_ReplaceColors(message, author);
+    Internal_ReplaceColors(message, sizeof(message));
     Internal_SendMessage(i, message, author);
   }
-  return;
+  return 0;
 }
 
 
@@ -229,10 +239,11 @@ public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
 /* native void CSkipNextClient(const int client); */
 public int Native_CSkipNextClient(Handle plugin, int numParams)
 {
+  int client = GetNativeCell(1);
   if(client < 1 || client > MaxClients)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
   g_SkipList[client] = true;
-  return;
+  return 0;
 }
 
 
@@ -256,7 +267,7 @@ public int Native_CReplyToCommand(Handle plugin, int numParams)
   }
   else
     CPrintToChat(client, message);
-  return;
+  return 0;
 }
 
 
@@ -280,7 +291,7 @@ public int Native_CReplyToCommandEx(Handle plugin, int numParams)
   }
   else
     CPrintToChatEx(client, author, message);
-  return;
+  return 0;
 }
 
 
@@ -300,9 +311,9 @@ public int Native_CShowActivity(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivity");
   
   Internal_InitColors();
-  Internal_ReplaceColors(message);
+  Internal_ReplaceColors(message, sizeof(message));
   ShowActivity(client, message);
-  return;
+  return 0;
 }
 
 
@@ -324,14 +335,15 @@ public int Native_CShowActivityEx(Handle plugin, int numParams)
   int tagLen;
   GetNativeStringLength(2, tagLen);
   tagLen *= BUFFER_MULTIPLIER;        // Using MAX_BUFFER_LENGTH is a waste since most tags are tiny
-  char[] tag = new char[tagLen + 2];  // +2 is for tagLen=0 + '\0'
-  GetNativeString(2, tag, tagLen + 2);
+  tagLen += 2;                        // +2 is for tagLen=0 + '\0'
+  char[] tag = new char[tagLen];  
+  GetNativeString(2, tag, tagLen);
   
   Internal_InitColors();
-  Internal_ReplaceColors(message);
-  Internal_ReplaceColors(tag);
+  Internal_ReplaceColors(message, sizeof(message));
+  Internal_ReplaceColors(tag, tagLen);
   ShowActivityEx(client, tag, message);
-  return;
+  return 0;
 }
 
 
@@ -353,14 +365,15 @@ public int Native_CShowActivity2(Handle plugin, int numParams)
   int tagLen;
   GetNativeStringLength(2, tagLen);
   tagLen *= BUFFER_MULTIPLIER;        // Using MAX_BUFFER_LENGTH is a waste since most tags are tiny
-  char[] tag = new char[tagLen + 2];  // +2 is for tagLen=0 + '\0'
-  GetNativeString(2, tag, tagLen + 2);
+  tagLen += 2;                        // +2 is for tagLen=0 + '\0'
+  char[] tag = new char[tagLen];  
+  GetNativeString(2, tag, tagLen);
   
   Internal_InitColors();
-  Internal_ReplaceColors(message);
-  Internal_ReplaceColors(tag);
+  Internal_ReplaceColors(message, sizeof(message));
+  Internal_ReplaceColors(tag, tagLen);
   ShowActivity2(client, tag, message);
-  return;
+  return 0;
 }
 
 
@@ -378,7 +391,7 @@ public int Native_CColorExists(Handle plugin, int numParams)
 
   Internal_InitColors();
   int dummy;
-  return g_Colors.GetValue(color, dummy);
+  return view_as<int>(g_Colors.GetValue(color, dummy));
 }
 
 
@@ -399,7 +412,7 @@ public int Native_CGetTeamColor(Handle plugin, int numParams)
   if(g_Engine == Engine_DODS)
     gameColor = GAME_DODS;
   
-  int team = GetClientTeam() - 1; // 0 = Unassigned, 1 = Spectator, 2 = Team1/RED/T, 3 = Team2/BLU/CT
+  int team = GetClientTeam(client) - 1; // 0 = Unassigned, 1 = Spectator, 2 = Team1/RED/T, 3 = Team2/BLU/CT
   if(team < 0 || team > 2)
     return COLOR_GREEN;           // Unassigned (MoreColors uses this for all games)
     
@@ -434,14 +447,14 @@ public int Native_CRemoveTags(Handle plugin, int numParams)
   int len;
   GetNativeStringLength(1, len);
   if(len <= 0)
-    return;
+    return 0;
   
   char[] msg = new char[len + 1];
   GetNativeString(1, msg, len + 1);
 
   // Only remove MoreColors tags, as anything else might be unexpected behaviour
   SFHCL_RemoveColours(msg, false, false, true);
-  return;
+  return 0;
 }
 
 
@@ -452,7 +465,7 @@ public int Native_CReplaceColorCodes(Handle plugin, int numParams)
   int len;
   GetNativeStringLength(1, len);
   if(len <= 0)
-    return;
+    return 0;
   
   len += 1; // Add '\0'
   char[] msg = new char[len];
@@ -460,7 +473,7 @@ public int Native_CReplaceColorCodes(Handle plugin, int numParams)
   
   Internal_ReplaceColors(msg, len);
   SetNativeString(1, msg, len);
-  return;
+  return 0;
 }
 
 
@@ -514,7 +527,7 @@ static void Internal_ReplaceColors(char[] buffer, const int maxlength)
         // Get tag buffer
         int tagSize = cursor - startBrace + 1;      // Include {}'s and '\0'
         tagSize = (tagSize < 8) ? 8 : tagSize;      // TagToColorBytes requires char[8] minimum: "\x07ABCABC"
-        char tag[] = new char[tagSize]; 
+        char[] tag = new char[tagSize]; 
         strcopy(tag, tagSize, output[startBrace]);
         
         // Proccess tag into color bytes
@@ -565,12 +578,12 @@ static int TagToColorBytes(char[] tag, const int maxlength)
 {
   if(StrEqual(tag, TAG_DEFAULTCOLOR, true))
   {
-    tag = "\x01";
+    strcopy(tag, maxlength, "\x01");
     return 2;                             // Return new tag size (Incl '\0')
   }
   else if(StrEqual(tag, TAG_TEAMCOLOR, true))
   {
-    tag = "\x03";
+    strcopy(tag, maxlength, "\x03");
     return 2;
   }
 
@@ -667,7 +680,10 @@ static void Internal_FixTeamColors(const int author, const int game, char[] msg,
     default: // 0 = Unassigned. Use Green (0x04)
     {
       for(int i = 0; i < maxlength; ++i)
-        msg[i] = (msg[i] == '\x03') ? '\x04' : msg[i];
+      {
+        if(msg[i] == '\x03')
+          msg[i] = '\x04';
+      }
     }
   }
 }

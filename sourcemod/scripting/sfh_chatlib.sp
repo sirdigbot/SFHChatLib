@@ -17,9 +17,6 @@
 #pragma newdecls required
 
 
-#include "sfhcl/sfh_morecolors.sp" // Add MoreColors Native Reimplementation
-
-
 
 //=================================
 // Constants
@@ -43,6 +40,10 @@ Handle  h_szTag       = null;
 char    g_szTag[MAX_TAG_LENGTH];
 Handle  h_szUsageTag  = null;
 char    g_szUsageTag[MAX_TAG_LENGTH];
+
+
+
+#include "sfhcl/sfh_morecolors.sp" // Add MoreColors Native Reimplementation
 
 
 
@@ -120,7 +121,7 @@ public void OnPluginStart()
   GetConVarString(h_szUsageTag, g_szUsageTag, sizeof(g_szUsageTag));
   HookConVarChange(h_szUsageTag, UpdateCvars);
   
-  SFHCL_MC_InitGlobals();
+  SFHCL_MC_OnPluginStart();
 
   PrintToServer("%T", "SFHCL_PluginLoaded", LANG_SERVER);
 }
@@ -150,7 +151,7 @@ public int Native_TagReply(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -158,7 +159,7 @@ public int Native_TagReply(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReply");
 
   CReplyToCommandEx(client, client, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagReplyEx(const int client, const int author, const char[] msg, any ...); */
@@ -170,7 +171,7 @@ public int Native_TagReplyEx(Handle plugin, int numParams)
   
   GetNativeStringLength(3, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -178,7 +179,7 @@ public int Native_TagReplyEx(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyEx");
 
   CReplyToCommandEx(client, author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagReplyUsage(const int client, const char[] msg, any ...); */
@@ -189,7 +190,7 @@ public int Native_TagReplyUsage(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -197,7 +198,7 @@ public int Native_TagReplyUsage(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyUsage");
 
   CReplyToCommandEx(client, client, "%s %t\x01: %s", g_szUsageTag, "SFHCL_Usage", msg); // %t not %T. Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagReplyUsageEx(const int client, const int author, const char[] msg, any ...); */
@@ -209,7 +210,7 @@ public int Native_TagReplyUsageEx(Handle plugin, int numParams)
   
   GetNativeStringLength(3, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -217,7 +218,7 @@ public int Native_TagReplyUsageEx(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyUsageEx");
 
   CReplyToCommandEx(client, author, "%s %t\x01: %s", g_szUsageTag, "SFHCL_Usage", msg); // %t not %T. Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 
@@ -230,7 +231,7 @@ public int Native_TagPrintChat(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -238,7 +239,7 @@ public int Native_TagPrintChat(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChat");
 
   CPrintToChatEx(client, client, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagPrintChatEx(const int client, const int author, const char[] msg, any ...); */
@@ -250,7 +251,7 @@ public int Native_TagPrintChatEx(Handle plugin, int numParams)
   
   GetNativeStringLength(3, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -258,7 +259,7 @@ public int Native_TagPrintChatEx(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatEx");
 
   CPrintToChatEx(client, author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagPrintChatAll(const char[] msg, any ...); */
@@ -268,7 +269,7 @@ public int Native_TagPrintChatAll(Handle plugin, int numParams)
   
   GetNativeStringLength(1, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -276,7 +277,7 @@ public int Native_TagPrintChatAll(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatAll");
 
   CPrintToChatAll("%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagPrintChatAllEx(const int author, const char[] msg, any ...); */
@@ -287,7 +288,7 @@ public int Native_TagPrintChatAllEx(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -295,7 +296,7 @@ public int Native_TagPrintChatAllEx(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatAllEx");
 
   CPrintToChatAllEx(author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 
@@ -309,7 +310,7 @@ public int Native_TagActivity2(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -322,7 +323,7 @@ public int Native_TagActivity2(Handle plugin, int numParams)
   Format(tag, size, "%s ", g_szTag);
   
   CShowActivity2(client, tag, msg);  // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagActivityEx(const int client, const char[] msg, any ...); */
@@ -333,7 +334,7 @@ public int Native_TagActivityEx(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -346,7 +347,7 @@ public int Native_TagActivityEx(Handle plugin, int numParams)
   Format(tag, size, "%s ", g_szTag);
   
   CShowActivityEx(client, tag, msg);  // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 
@@ -358,7 +359,7 @@ public int Native_TagPrintServer(Handle plugin, int numParams)
   
   GetNativeStringLength(1, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -370,7 +371,7 @@ public int Native_TagPrintServer(Handle plugin, int numParams)
   Format(buff, buffSize, "%s %s", g_szTag, msg);
   RemoveChatColours(buff, buffSize);
   PrintToServer(buff);
-  return;
+  return 0;
 }
 
 
@@ -383,7 +384,7 @@ public int Native_TagPrintToClient(Handle plugin, int numParams)
   
   GetNativeStringLength(2, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -402,7 +403,7 @@ public int Native_TagPrintToClient(Handle plugin, int numParams)
   }
   else
     CPrintToChatEx(client, client, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 /* native void TagPrintToClientEx(const int client, const int author, const char[] msg, any ...); */
@@ -414,7 +415,7 @@ public int Native_TagPrintToClientEx(Handle plugin, int numParams)
   
   GetNativeStringLength(3, len);
   if(len <= 0)
-    return;
+    return 0;
     
   len += 255; // For formatting
   char[] msg = new char[len];
@@ -433,7 +434,7 @@ public int Native_TagPrintToClientEx(Handle plugin, int numParams)
   }
   else
     CPrintToChatEx(client, author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return;
+  return 0;
 }
 
 
@@ -466,7 +467,7 @@ public int Native_SFHCL_RemoveColours(Handle plugin, int numParams)
 /* native bool SFHCL_IsSingleByteColour(const char byte); */
 public int Native_SFHCL_IsSingleByteColour(Handle plugin, int numParams)
 {
-  return IsSingleByteColour(GetNativeCell(1));
+  return view_as<int>(IsSingleByteColour(GetNativeCell(1)));
 }
 
 
