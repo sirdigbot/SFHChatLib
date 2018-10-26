@@ -4,6 +4,7 @@
 # Keep Only These
 !/sourcemod/scripting/include/
 !/sourcemod/scripting/include/sfh_chatlib.inc
-!/sourcemod/scripting/include/morecolors_new.inc
+!/sourcemod/scripting/sfhcl/
+!/sourcemod/scripting/sfhcl/sfh_morecolors.sp
 !/sourcemod/scripting/sfh_chatlib.sp
 !/sourcemod/scripting/sfh_chatlib_tests.sp

@@ -4,11 +4,11 @@
   {
     "Version"
     {
-      "Latest" "1.0.1"
-      "Previous" "1.0.0"
+      "Latest" "1.1.0"
+      "Previous" "1.0.1"
     }
 
-    "Notes" "Added version cvar"
+    "Notes" "Added Native Implementation of MoreColors"
   }
 
   "Files"
@@ -17,7 +17,7 @@
     "Plugin" "Path_SM/translations/sfh.chatlib.phrases.txt"
 
     "Source" "Path_SM/scripting/sfh_chatlib.sp"
+    "Source" "Path_SM/scripting/sfhcl/sfh_morecolors.sp"
     "Source" "Path_SM/scripting/include/sfh_chatlib.inc"
-    "Source" "Path_SM/scripting/include/morecolors_new.inc"
   }
 }

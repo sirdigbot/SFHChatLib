@@ -21,4 +21,13 @@
   {
     "en" "Usage"
   }
+  
+  // MoreColors
+  
+  "SFHCL_InvalidClient"
+  {
+    "#format" "{1:d}"
+    "en" "Invalid client index {1}"
+  }
+  
 }
