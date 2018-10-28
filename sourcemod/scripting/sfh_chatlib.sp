@@ -24,7 +24,8 @@
 #define PLUGIN_URL      "https://sirdigbot.github.io/SFHChatLib/"
 #define UPDATE_URL      "https://sirdigbot.github.io/SFHChatLib/sourcemod/sfh_chatlib.txt"
 
-#define MAX_TAG_LENGTH 32
+#define MAX_TAG_LENGTH    32
+#define DEFAULT_TAG_VALUE "DEFAULT" // Value to set the tag cvars to to indicate default
 #define DEFAULT_TAG       "\x04[SM]\x01"
 #define DEFAULT_USAGE_TAG "\x04[SM]\x05"
 
@@ -113,12 +114,12 @@ public void OnPluginStart()
   HookConVarChange(h_bUpdate, UpdateCvars);
   
   // MoreColors can't set \x04 so to save bytes the empty tag cvar defaults to "\x04[SM]\x01" instead of "\x07ABCABC[SM]\x01"
-  h_szTag = CreateConVar("sm_sfh_chatlib_tag", "", "Tag Override for Chat Library.\nLeaving empty will default to the standard lime \"[SM]\"\nMax Length is 31.\n(Default: \"\")", FCVAR_SPONLY);
-  GetConVarString(h_szTag, g_szTag, sizeof(g_szTag));
+  h_szTag = CreateConVar("sm_sfh_chatlib_tag", DEFAULT_TAG_VALUE, "Tag Override for Chat Library.\nSetting to \"DEFAULT\" will default to the standard lime \"[SM]\"\nMax Length is 31.\n(Default: \"DEFAULT\")", FCVAR_NONE);
+  UpdateTag();
   HookConVarChange(h_szTag, UpdateCvars);
   
-  h_szUsageTag = CreateConVar("sm_sfh_chatlib_usage", "", "Usage Tag Override for Chat Library (Excluding \"Usage\").\nLeaving empty will default to lime with trailing pale green text \"[SM]\"\nMax Length is 31.\n(Default: \"\")", FCVAR_SPONLY);
-  GetConVarString(h_szUsageTag, g_szUsageTag, sizeof(g_szUsageTag));
+  h_szUsageTag = CreateConVar("sm_sfh_chatlib_usage", DEFAULT_TAG_VALUE, "Usage Tag Override for Chat Library (Excluding \"Usage\").\nSetting to \"DEFAULT\" will default to lime with trailing pale green text \"[SM]\"\nMax Length is 31.\n(Default: \"DEFAULT\")", FCVAR_NONE);
+  UpdateUsageTag();
   HookConVarChange(h_szUsageTag, UpdateCvars);
   
   SFHCL_MC_OnPluginStart();
@@ -134,10 +135,28 @@ public void UpdateCvars(Handle cvar, const char[] oldValue, const char[] newValu
     (g_bUpdate) ? Updater_AddPlugin(UPDATE_URL) : Updater_RemovePlugin();
   }
   else if(cvar == h_szTag)
-    Format(g_szTag, sizeof(g_szTag), (StrEqual(newValue, "", true)) ? DEFAULT_TAG : newValue);
+    UpdateTag();
   else if(cvar == h_szUsageTag)
-    Format(g_szUsageTag, sizeof(g_szUsageTag), (StrEqual(newValue, "", true)) ? DEFAULT_USAGE_TAG : newValue);
+    UpdateUsageTag();
   return;
+}
+
+void UpdateTag()
+{
+  GetConVarString(h_szTag, g_szTag, sizeof(g_szTag));
+  if(StrEqual(g_szTag, DEFAULT_TAG_VALUE, true))
+    strcopy(g_szTag, sizeof(g_szTag), DEFAULT_TAG);
+  else
+    CReplaceColorCodes(g_szTag); // Process colour codes in advance for minor optimisation
+}
+
+void UpdateUsageTag()
+{
+  GetConVarString(h_szUsageTag, g_szUsageTag, sizeof(g_szUsageTag));
+  if(StrEqual(g_szUsageTag, DEFAULT_TAG_VALUE, true))
+    strcopy(g_szUsageTag, sizeof(g_szUsageTag), DEFAULT_USAGE_TAG);
+  else
+    CReplaceColorCodes(g_szUsageTag);
 }
 
 
