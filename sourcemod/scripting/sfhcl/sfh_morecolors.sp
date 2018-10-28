@@ -22,6 +22,8 @@
 #define _sfh_morecolors_included
 
 
+#include <regex>
+
 
 #define MORE_COLORS_VERSION   "1.9.1-sfhcl"
 #define MAX_MESSAGE_LENGTH    256
@@ -56,10 +58,11 @@
 #define TAG_CLOSE_CHAR    '}'
 #define TAG_DEFAULTCOLOR  "{default}"
 #define TAG_TEAMCOLOR     "{teamcolor}"
-
+#define TAG_REGEX         "{[a-zA-Z0-9]+}" // Must not allow TAG_OPEN/CLOSE_CHAR
 
 static bool g_SkipList[MAXPLAYERS + 1]; // Whether or not to skip a player for PrintToChatAll/Ex
 static StringMap g_Colors;
+static Regex g_TagRegex;
 
 // For games that don't support SayText2, team colors must be done manually.
 // First index is GAME_* index.
@@ -88,6 +91,10 @@ void SFHCL_MC_OnPluginStart()
     g_UserMsgType = GetUserMessageType();
   else
     g_UserMsgType = UM_BitBuf; // Safe default. Only newer games use ProtoBuf.
+    
+  g_TagRegex = CompileRegex(TAG_REGEX);
+  if(g_TagRegex == INVALID_HANDLE)
+    ThrowError("%T", "SFHCL_RegexFail", LANG_SERVER);
   return;
 }
 
@@ -502,104 +509,93 @@ static void Internal_ToLower(char[] str, const int maxlength)
  */
 static void Internal_ReplaceColors(char[] buffer, const int maxlength)
 {
-  if(maxlength <= 0)
-    return;
-
   Internal_InitColors();
   
-  int bufferLen   = strlen(buffer);
-  int startBrace  = -1;         // Index of paired starting '{'
-  int cursor      = 0;          // Index we are writing to in output
-  int outputSize  = bufferLen * BUFFER_MULTIPLIER;
-  char[] output = new char[outputSize];
+  /**
+   * Note to any optimisers: Here be dragons. And Un-debuggable Access Violations.
+   */
+
+  char tag[32];  
+  char colorStr[8]; // TagToColorBytes needs only 8 for output
   
-  for(int i = 0; i <= bufferLen; ++i)
+  int matches = g_TagRegex.MatchAll(buffer);
+  for(int i = 0; i < matches; ++i)
   {
-    output[cursor] = buffer[i]; // Write to output first
-    
-    if(output[cursor] == TAG_OPEN_CHAR)
-      startBrace = cursor;
-    else if(output[cursor] == TAG_CLOSE_CHAR)
+    if(!g_TagRegex.GetSubString(0, tag, sizeof(tag), i))
     {
-      // If end brace found with matching start brace..
-      if(startBrace != -1 && startBrace < cursor)
-      {
-        // Get tag buffer
-        int tagSize = cursor - startBrace + 1;      // Include {}'s and '\0'
-        tagSize = (tagSize < 8) ? 8 : tagSize;      // TagToColorBytes requires char[8] minimum: "\x07ABCABC"
-        char[] tag = new char[tagSize]; 
-        strcopy(tag, tagSize, output[startBrace]);
-        
-        // Proccess tag into color bytes
-        int newTagSize = TagToColorBytes(tag, tagSize);
-        if(newTagSize != -1)
-        {
-          // Overwrite the tag text in output with the new color bytes.
-          // If new bytes are shorter than the original tag, replace all excess characters with '\0'
-          //  This is in case the remainder is not overwritten (such as ending on a color).
-          //  All bytes are overwritten instead of just the next one for safety.
-          //  Output is GUARANTEED enough bytes to fit all color processing. (see BUFFER_MULTIPLIER definition)
-          
-          int offsetByte;
-          for(int j = startBrace; j < tagSize; ++j) // tagSize not newTagSize so we can use 1 loop
-          {
-            offsetByte  = j - startBrace;
-            output[j]   = (offsetByte < newTagSize) ? tag[offsetByte] : '\0';
-          }
-          
-          // Offset cursor to end of color bytes (account for tag size change)
-          cursor += (newTagSize - tagSize);
-        }
-        
-        // Tag processed, reset search
-        startBrace  = -1;
-      }
+      // GetSubString uses match list from regex handle. If it fails something is really broken.
+      LogError("%T", "SFHCL_RegexAnomaly", LANG_SERVER);
+      break;
     }
     
-    ++cursor;
+    // Minor optimisation. Calculate and reuse strlen for ReplaceStringEx
+    int tagLen    = strlen(tag);
+    int colorLen  = TagToColorBytes(tag, colorStr, sizeof(colorStr), tagLen) - 1; // -1 for len not size
+
+    if(colorLen > 0)
+      ReplaceStringEx(buffer, maxlength, tag, colorStr, tagLen, colorLen);
   }
   
-  // Terminate output then copy
-  output[cursor] = '\0'; // Cursor is already the index after last character
-  strcopy(buffer, maxlength, output);
+  // Trim colours from the end of the message (if replacements were done)
+  
+  // TODO / BUG: Ending a message on "\x07ABCABC" and no text afterwards wont display the color
+  // Instead, it displays the hex code.
+  // The control character remains invisible though, so this doesnt happen with {default} or {teamcolor}
+  // The below will remove this just for cleanliness
+  
+  if(matches > 0)
+  {
+    int colorChar = strlen(buffer) - 7; // Get \x07 index of last color ("\x07ABCABC")
+    if(colorChar > -1 && buffer[colorChar] == '\x07')
+      buffer[colorChar] = '\0';         // Terminate to 'erase' hex string
+  }
   return;
 }
 
 /**
- * Convert a MoreColors tag into the bytes needed to output the correct colour.
- * Invalid tags are ignored.
+ * Convert a MoreColors tag into the bytes needed to display the correct colour.
+ *
  * Tags must be lowercase and include opening and closing curly braces. e.g. "{teamcolor}"
+ * Maxlength must be at least 8 if the tag is a custom color, or 2 for {default} and {teamcolor}
  *
- * Maxlength must be at least 8 if the tag is a custom color or it wont work.
+ * @param tag           Input tag string
+ * @param output        String output buffer
+ * @param maxlength     Maximum length of output buffer
+ * @param tagLen        Optional. If set >0, will use used instead of strlen(tag).
  *
- * Returns size of new tag string, or -1 if not replaced.
+ * Returns SIZE of new tag string (0 if tag was invalid and not replaced).
  */
-static int TagToColorBytes(char[] tag, const int maxlength)
+static int TagToColorBytes(const char[] tag, char[] output, const int maxlength, int tagLen=0)
 {
   if(StrEqual(tag, TAG_DEFAULTCOLOR, true))
   {
-    strcopy(tag, maxlength, "\x01");
-    return 2;                             // Return new tag size (Incl '\0')
+    strcopy(output, maxlength, "\x01");
+    return 2;                     // Return new tag size (Incl '\0')
   }
   else if(StrEqual(tag, TAG_TEAMCOLOR, true))
   {
-    strcopy(tag, maxlength, "\x03");
+    strcopy(output, maxlength, "\x03");
     return 2;
   }
-
-  char[] name = new char[maxlength - 2];  // Remove {}'s (TAG_OPEN/CLOSE_CHAR)
-  strcopy(name, maxlength - 2, tag[1]);
   
+  // Allow for strlen(tag) override
+  if(tagLen <= 0)
+    tagLen = strlen(tag);         // tagLen is copy
+
+  int len     = tagLen - 1;       // Remove {}'s (TAG_OPEN/CLOSE_CHAR), Add '\0' 
+  char[] name = new char[len];  
+  strcopy(name, len, tag[1]);
+
   Internal_InitColors();
   
   int color;
   if(g_Colors.GetValue(name, color))
   {
-    Format(tag, maxlength, "\x07%06X", color);
+    Format(output, maxlength, "\x07%06X", color);
     return 8;
   }
-  
-  return -1;
+
+  return 0;
 }
 
 
@@ -651,7 +647,7 @@ static void Internal_SendMessage(const int client, const char[] msg, int author=
     BfWriteByte(buf, true);   // Chat message
     BfWriteString(buf, msg);
   }
-  EndMessage();
+  EndMessage(); // Closes Handle
   return;
 }
 

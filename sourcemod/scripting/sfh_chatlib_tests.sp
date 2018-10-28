@@ -68,7 +68,8 @@ public void OnPluginStart()
   HookConVarChange(h_bUpdate, UpdateCvars);
   
   RegAdminCmd("sm_cltest_filter", CMD_TestFilterParams, ADMFLAG_ROOT, "Test Chat Library colour filtering");
-  RegAdminCmd("sm_cltest_print", CMD_TestPrints, ADMFLAG_ROOT, "Test each the print functions for Chat Library");
+  RegAdminCmd("sm_cltest_print",  CMD_TestPrints, ADMFLAG_ROOT, "Test each the print functions for Chat Library");
+  RegAdminCmd("sm_cltest_mc",     CMD_TestMoreColors, ADMFLAG_ROOT, "Test MoreColors Natives");
 
   PrintToServer("%T", "SFHCL_TestsLoaded", LANG_SERVER);
 }
@@ -224,6 +225,49 @@ public Action CMD_TestPrints(int client, int args)
   else
     ReplyToCommand(client, "Usage: sm_cltest_print <Target/\"RCON\"> <Author> <Native Name> <Message>");
 
+  return Plugin_Handled;
+}
+
+
+
+public Action CMD_TestMoreColors(int client, int args)
+{
+  /**
+   * I'll be honest, these are pretty much useless as tests.
+   * But I don't know how to do it better
+   */
+   
+  PrintToChat(client, "1. Regular");
+  CPrintToChat(client, "{gold}AB{default}CD");
+  CPrintToChat(client, "{default}AB{gold}CD");        // Short custom
+  CPrintToChat(client, "{default}AB{yellowgreen}CD"); // Long custom (>8)
+  CPrintToChat(client, "{default}AB{teamcolor}CD");
+  CPrintToChat(client, "{gold}AB{teamcolor}CD");
+  
+  PrintToChat(client, "2. Regular Trail");
+  CPrintToChat(client, "{gold}AB{default}");
+  CPrintToChat(client, "{default}AB{gold}");          // Short custom
+  CPrintToChat(client, "{default}AB{yellowgreen}");   // Long custom (>8)
+  CPrintToChat(client, "{default}AB{teamcolor}");
+  CPrintToChat(client, "{gold}AB{teamcolor}");
+  
+  PrintToChat(client, "3. Invalid");
+  CPrintToChat(client, "{geld}AB{}CD{t}EF");
+  CPrintToChat(client, "AB{geld}CD{}EF{t}");
+
+  PrintToChat(client, "4. Combo + Combo Trail");
+  CPrintToChat(client, "{teamcolor}AB{geld}CD{gold}EF{default}GH");
+  CPrintToChat(client, "AB{teamcolor}CD{geld}EF{gold}GH{default}");
+  
+  
+  PrintToChat(client, "5. Gibberish Parsing");
+  char msg[] = "{teamcolor}{teamcolor}{teamcolor}a{DEFaULT}AB{-{}a}}}s}]\x01]{a{}}}[[-}43}}{geld}CD{{gold}}EF{default}{yellowgreen}GH{yellowgreen}";
+  char correct[] = "\x03\x03\x03a{DEFaULT}AB{-{}a}}}s}]\x01]{a{}}}[[-}43}}{geld}CD{\x07FFD700}EF\x01\x079ACD32GH";
+  CReplaceColorCodes(msg);
+  PrintToChat(client, "GIBBERISH EQUAL: %i", StrEqual(msg, correct, true));
+  CPrintToChat(client, "PARSE:\n%s", msg);
+  CPrintToChat(client, "VALID:\n%s", correct);
+  
   return Plugin_Handled;
 }
 

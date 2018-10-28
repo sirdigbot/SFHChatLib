@@ -29,5 +29,12 @@
     "#format" "{1:d}"
     "en" "Invalid client index {1}"
   }
-  
+  "SFHCL_RegexFail"
+  {
+    "en" "Regular Expression failed to compile."
+  }
+  "SFHCL_RegexAnomaly"
+  {
+    "en" "Regex somehow failed to retrieve substring on found match."
+  }
 }
