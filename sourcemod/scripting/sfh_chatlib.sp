@@ -33,18 +33,20 @@
 
 //=================================
 // Globals
-Handle  h_bUpdate     = null;
+Handle  h_bUpdate         = null;
 bool    g_bUpdate;
 EngineVersion g_Engine; // Used by MoreColors
 
-Handle  h_szTag       = null;
+Handle  h_szTag           = null;
 char    g_szTag[MAX_TAG_LENGTH];
-Handle  h_szUsageTag  = null;
-char    g_szUsageTag[MAX_TAG_LENGTH];
+int     g_iTagLength      = 0;
+Handle  h_szUsageTag      = null;
+char    g_szUsageTag[MAX_TAG_LENGTH]; // Must account for SFHCL_Usage translation
+int     g_iUsageTagLength = 0;
 
 
 
-#include "sfhcl/sfh_morecolors.sp" // Add MoreColors Native Reimplementation
+#include "sfhcl/sfh_morecolors.sp"    // Add MoreColors Native Reimplementation
 
 
 
@@ -76,7 +78,6 @@ public APLRes AskPluginLoad2(Handle self, bool late, char[] err, int err_max)
   CreateNative("TagPrintChat",        Native_TagPrintChat);
   CreateNative("TagActivity2",        Native_TagActivity2);
   CreateNative("TagPrintServer",      Native_TagPrintServer);
-  CreateNative("TagPrintToClient",    Native_TagPrintToClient);
   
   // New natives added for complete API
   CreateNative("TagReplyUsageEx",     Native_TagReplyUsageEx);
@@ -85,7 +86,6 @@ public APLRes AskPluginLoad2(Handle self, bool late, char[] err, int err_max)
   CreateNative("TagPrintChatAllEx",   Native_TagPrintChatAllEx);
   CreateNative("TagReplyEx",          Native_TagReplyEx);
   CreateNative("TagActivityEx",       Native_TagActivityEx);
-  CreateNative("TagPrintToClientEx",  Native_TagPrintToClientEx);
   
   // Misc Natives
   CreateNative("SFHCL_RemoveColours",       Native_SFHCL_RemoveColours);
@@ -141,22 +141,51 @@ public void UpdateCvars(Handle cvar, const char[] oldValue, const char[] newValu
   return;
 }
 
+/**
+ * Process and update full tag string
+ * g_szTag text will be Cvar text with appended space.
+ */
 void UpdateTag()
 {
-  GetConVarString(h_szTag, g_szTag, sizeof(g_szTag));
-  if(StrEqual(g_szTag, DEFAULT_TAG_VALUE, true))
-    strcopy(g_szTag, sizeof(g_szTag), DEFAULT_TAG);
+  char tagBuff[64];
+  
+  GetConVarString(h_szTag, tagBuff, sizeof(tagBuff));
+  if(StrEqual(tagBuff, DEFAULT_TAG_VALUE, true))
+    Format(g_szTag, sizeof(g_szTag), "%s ", DEFAULT_TAG);
   else
-    CReplaceColorCodes(g_szTag); // Process colour codes in advance for minor optimisation
+  {
+    CReplaceColorCodes(tagBuff);
+    Format(g_szTag, sizeof(g_szTag), "%s ", tagBuff);
+  }
+
+  g_iTagLength = strlen(g_szTag);
+  return;
 }
 
+/**
+ * Process and update full usage tag string and globals
+ * g_szUsageTag text will be "<CvarText> Usage\x01: "
+ */
 void UpdateUsageTag()
 {
-  GetConVarString(h_szUsageTag, g_szUsageTag, sizeof(g_szUsageTag));
-  if(StrEqual(g_szUsageTag, DEFAULT_TAG_VALUE, true))
-    strcopy(g_szUsageTag, sizeof(g_szUsageTag), DEFAULT_USAGE_TAG);
+  char tagBuff[64];
+  
+  /**
+   * BUG:
+   * Translation is not supported per-client because it's too expensive to bother doing every time
+   * and also because no other languages are even in the plugin.
+   */
+  GetConVarString(h_szUsageTag, tagBuff, sizeof(tagBuff));
+  if(StrEqual(tagBuff, DEFAULT_TAG_VALUE, true))
+    Format(g_szUsageTag, sizeof(g_szUsageTag), "%s %T\x01: ", DEFAULT_USAGE_TAG, "SFHCL_Usage", LANG_SERVER);
   else
-    CReplaceColorCodes(g_szUsageTag);
+  {
+    CReplaceColorCodes(tagBuff);
+    Format(g_szUsageTag, sizeof(g_szUsageTag), "%s %T\x01: ", tagBuff, "SFHCL_Usage", LANG_SERVER);
+  }
+
+  g_iUsageTagLength = strlen(g_szUsageTag);
+  return;
 }
 
 
@@ -165,78 +194,164 @@ void UpdateUsageTag()
 /* native void TagReply(const int client, const char[] msg, any ...); */
 public int Native_TagReply(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
   int len;
-  
   GetNativeStringLength(2, len);
   if(len <= 0)
     return 0;
+  
+  // Get and Verify client
+  int client = GetNativeCell(1);
+  
+  if(client < 0 || client > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  // Set translation target before formatting message. Offset format by tag and '\x01'
+  SetGlobalTransTarget((client) ? client : LANG_SERVER);
+  if(FormatNativeString(0, 2, 3, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReply");
 
-  CReplyToCommandEx(client, client, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
+  if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
+  {
+    // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
+    // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
+    SFHCL_RemoveColours(message);
+    PrintToConsole(client, message);
+  }
+  else
+    Internal_CSendMessage(client, 0, message, sizeof(message));
   return 0;
 }
+
+
 
 /* native void TagReplyEx(const int client, const int author, const char[] msg, any ...); */
 public int Native_TagReplyEx(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
-  int author = GetNativeCell(2);
   int len;
-  
   GetNativeStringLength(3, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 3, 4, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyEx");
 
-  CReplyToCommandEx(client, author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
+  // Get and Verify client/author
+  int client = GetNativeCell(1);
+  int author = GetNativeCell(2);
+  
+  if(client < 0 || client > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+    
+  // Author of 0 will default to client in Internal_CSendMessage
+  if(author < 0 || author > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(author != 0 && !IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+    
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget((client) ? client : LANG_SERVER);
+  if(FormatNativeString(0, 3, 4, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
+
+  if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
+  {
+    // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
+    // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
+    SFHCL_RemoveColours(message);
+    PrintToConsole(client, message);
+  }
+  else
+    Internal_CSendMessage(client, author, message, sizeof(message));
   return 0;
 }
+
+
 
 /* native void TagReplyUsage(const int client, const char[] msg, any ...); */
 public int Native_TagReplyUsage(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
   int len;
-  
   GetNativeStringLength(2, len);
   if(len <= 0)
     return 0;
+  
+  // Get and Verify client
+  int client = GetNativeCell(1);
+  
+  if(client < 0 || client > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyUsage");
+  char message[MAX_BUFFER_LENGTH] = "\x01";               // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szUsageTag); // Append preprocessed usage tag after default color
+  
+  // Set translation target before formatting message. Offset format by tag and '\x01'
+  SetGlobalTransTarget((client) ? client : LANG_SERVER);
+  if(FormatNativeString(0, 2, 3, sizeof(message) - g_iUsageTagLength - 1, _, message[g_iUsageTagLength + 1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReply");
 
-  CReplyToCommandEx(client, client, "%s %t\x01: %s", g_szUsageTag, "SFHCL_Usage", msg); // %t not %T. Native MoreColors does cleaning
+  if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
+  {
+    // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
+    // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
+    SFHCL_RemoveColours(message);
+    PrintToConsole(client, message);
+  }
+  else
+    Internal_CSendMessage(client, 0, message, sizeof(message));
   return 0;
 }
+
+
 
 /* native void TagReplyUsageEx(const int client, const int author, const char[] msg, any ...); */
 public int Native_TagReplyUsageEx(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
-  int author = GetNativeCell(2);
   int len;
-  
   GetNativeStringLength(3, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 3, 4, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyUsageEx");
 
-  CReplyToCommandEx(client, author, "%s %t\x01: %s", g_szUsageTag, "SFHCL_Usage", msg); // %t not %T. Native MoreColors does cleaning
+  // Get and Verify client/author
+  int client = GetNativeCell(1);
+  int author = GetNativeCell(2);
+  
+  if(client < 0 || client > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+    
+  // Author of 0 will default to client in Internal_CSendMessage
+  if(author < 0 || author > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(author != 0 && !IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+    
+  char message[MAX_BUFFER_LENGTH] = "\x01";               // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szUsageTag); // Append preprocessed usage tag after default color
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget((client) ? client : LANG_SERVER);
+  if(FormatNativeString(0, 3, 4, sizeof(message) - g_iUsageTagLength - 1, _, message[g_iUsageTagLength + 1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
+
+  if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
+  {
+    // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
+    // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
+    SFHCL_RemoveColours(message);
+    PrintToConsole(client, message);
+  }
+  else
+    Internal_CSendMessage(client, author, message, sizeof(message));
   return 0;
 }
 
@@ -245,127 +360,191 @@ public int Native_TagReplyUsageEx(Handle plugin, int numParams)
 /* native void TagPrintChat(const int client, const char[] msg, any ...); */
 public int Native_TagPrintChat(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
   int len;
-  
   GetNativeStringLength(2, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChat");
 
-  CPrintToChatEx(client, client, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
+  // Get and Verify client
+  int client = GetNativeCell(1);
+  
+  if(client < 1 || client > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(!IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+    
+  // Set translation target before formatting message
+  SetGlobalTransTarget(client);
+  if(FormatNativeString(0, 2, 3, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChat");
+
+  Internal_CSendMessage(client, 0, message, sizeof(message));
   return 0;
 }
+
+
 
 /* native void TagPrintChatEx(const int client, const int author, const char[] msg, any ...); */
 public int Native_TagPrintChatEx(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
-  int author = GetNativeCell(2);
   int len;
-  
   GetNativeStringLength(3, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 3, 4, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatEx");
 
-  CPrintToChatEx(client, author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
+  // Get and Verify client/author
+  int client = GetNativeCell(1);
+  int author = GetNativeCell(2);
+  
+  if(client < 1 || client > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(!IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+    
+  if(author < 1 || author > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(!IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget(client);
+  if(FormatNativeString(0, 3, 4, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
+
+  Internal_CSendMessage(client, author, message, sizeof(message));
   return 0;
 }
+
+
 
 /* native void TagPrintChatAll(const char[] msg, any ...); */
 public int Native_TagPrintChatAll(Handle plugin, int numParams)
 {
   int len;
-  
   GetNativeStringLength(1, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 1, 2, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatAll");
 
-  CPrintToChatAll("%s %s", g_szTag, msg); // Native MoreColors does cleaning
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  for(int i = 1; i <= MaxClients; ++i)
+  {
+    if(!IsClientInGame(i) || g_SkipList[i])
+    {
+      g_SkipList[i] = false;
+      continue;
+    }
+    
+    SetGlobalTransTarget(i);
+    if(FormatNativeString(0, 1, 2, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAll");
+
+    Internal_CSendMessage(i, 0, message, sizeof(message));
+  }
   return 0;
 }
+
+
 
 /* native void TagPrintChatAllEx(const int author, const char[] msg, any ...); */
 public int Native_TagPrintChatAllEx(Handle plugin, int numParams)
 {
-  int author = GetNativeCell(1);
   int len;
-  
   GetNativeStringLength(2, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatAllEx");
 
-  CPrintToChatAllEx(author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
+  int author = GetNativeCell(1);
+  
+  if(author < 1 || author > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(!IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+  
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  for(int i = 1; i <= MaxClients; ++i)
+  {
+    if(!IsClientInGame(i) || g_SkipList[i])
+    {
+      g_SkipList[i] = false;
+      continue;
+    }
+    
+    SetGlobalTransTarget(i);
+    if(FormatNativeString(0, 2, 3, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAllEx");
+
+    Internal_CSendMessage(i, author, message, sizeof(message));
+  }
   return 0;
 }
-
 
 
 
 /* native void TagActivity2(const int client, const char[] msg, any ...); */
 public int Native_TagActivity2(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
   int len;
-  
   GetNativeStringLength(2, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagActivity2");
 
-  // Get tag and append a space (so it displays properly)
-  int size = strlen(g_szTag) + 2; // +2 = Space + '\0'
-  char[] tag = new char[size];
-  Format(tag, size, "%s ", g_szTag);
+  int client = GetNativeCell(1);
   
-  CShowActivity2(client, tag, msg);  // Native MoreColors does cleaning
+  if(client < 0 || client > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  // Don't append tag to message or it displays weird with ShowActivity2/Ex
+    
+  // Set translation target before formatting message
+  SetGlobalTransTarget(LANG_SERVER);
+  if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivityEx");
+  
+  Internal_ReplaceColors(message, sizeof(message));
+  ShowActivity2(client, g_szTag, message);
   return 0;
 }
+
+
 
 /* native void TagActivityEx(const int client, const char[] msg, any ...); */
 public int Native_TagActivityEx(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
   int len;
-  
   GetNativeStringLength(2, len);
   if(len <= 0)
     return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagActivityEx");
 
-  // Get tag and append a space (so it displays properly)
-  int size = strlen(g_szTag) + 2; // +2 = Space + '\0'
-  char[] tag = new char[size];
-  Format(tag, size, "%s ", g_szTag);
+  int client = GetNativeCell(1);
   
-  CShowActivityEx(client, tag, msg);  // Native MoreColors does cleaning
+  if(client < 0 || client > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  // Don't append tag to message or it displays weird with ShowActivity2/Ex
+    
+  // Set translation target before formatting message
+  SetGlobalTransTarget(LANG_SERVER);
+  if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivityEx");
+  
+  Internal_ReplaceColors(message, sizeof(message));
+  ShowActivityEx(client, g_szTag, message);
   return 0;
 }
 
@@ -375,86 +554,22 @@ public int Native_TagActivityEx(Handle plugin, int numParams)
 public int Native_TagPrintServer(Handle plugin, int numParams)
 {
   int len;
-  
   GetNativeStringLength(1, len);
   if(len <= 0)
     return 0;
     
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 1, 2, len, _, msg) != SP_ERROR_NONE)
+  char message[MAX_MESSAGE_LENGTH]; // No colours, no need for MAX_BUFFER_LENGTH
+  if(FormatNativeString(0, 1, 2, len, _, message) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintServer");
 
-  int buffSize = len + MAX_TAG_LENGTH + 1; // +Space
-  char[] buff = new char[buffSize]; 
-  Format(buff, buffSize, "%s %s", g_szTag, msg);
-  RemoveChatColours(buff, buffSize);
-  PrintToServer(buff);
+  char tagBuff[MAX_TAG_LENGTH];
+  strcopy(tagBuff, sizeof(tagBuff), g_szTag);
+  RemoveChatColours(tagBuff);
+  RemoveChatColours(message);
+  PrintToServer("%s%s", tagBuff, message);
   return 0;
 }
 
-
-
-/* native void TagPrintToClient(const int client, const char[] msg, any ...); */
-public int Native_TagPrintToClient(Handle plugin, int numParams)
-{
-  int client = GetNativeCell(1);
-  int len;
-  
-  GetNativeStringLength(2, len);
-  if(len <= 0)
-    return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 2, 3, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintToClient");
-
-  // This Print function has no native equivalent:
-  // It's basically ReplyToCommand but it doesnt use a ReplySource
-  if(client == 0)
-  {
-    int buffSize = len + MAX_TAG_LENGTH + 1; // +Space
-    char[] buff = new char[buffSize]; 
-    Format(buff, buffSize, "%s %s", g_szTag, msg);
-    RemoveChatColours(buff, buffSize);
-    PrintToServer(buff);
-  }
-  else
-    CPrintToChatEx(client, client, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return 0;
-}
-
-/* native void TagPrintToClientEx(const int client, const int author, const char[] msg, any ...); */
-public int Native_TagPrintToClientEx(Handle plugin, int numParams)
-{
-  int client = GetNativeCell(1);
-  int author = GetNativeCell(2);
-  int len;
-  
-  GetNativeStringLength(3, len);
-  if(len <= 0)
-    return 0;
-    
-  len += 255; // For formatting
-  char[] msg = new char[len];
-  if(FormatNativeString(0, 3, 4, len, _, msg) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintToClientEx");
-
-  // This Print function has no native equivalent:
-  // It's basically ReplyToCommand but it doesnt use a ReplySource
-  if(client == 0)
-  {
-    int buffSize = len + MAX_TAG_LENGTH + 1; // +Space
-    char[] buff = new char[buffSize]; 
-    Format(buff, buffSize, "%s %s", g_szTag, msg);
-    RemoveChatColours(buff, buffSize);
-    PrintToServer(buff);
-  }
-  else
-    CPrintToChatEx(client, author, "%s %s", g_szTag, msg); // Native MoreColors does cleaning
-  return 0;
-}
 
 
 
@@ -482,6 +597,8 @@ public int Native_SFHCL_RemoveColours(Handle plugin, int numParams)
   SetNativeString(1, strBuff, len, false);
   return result;
 }
+
+
 
 /* native bool SFHCL_IsSingleByteColour(const char byte); */
 public int Native_SFHCL_IsSingleByteColour(Handle plugin, int numParams)

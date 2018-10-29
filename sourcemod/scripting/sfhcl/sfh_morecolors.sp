@@ -114,6 +114,7 @@ void SFHCL_MC_CreateNatives()
   CreateNative("CShowActivity",       Native_CShowActivity);
   CreateNative("CShowActivityEx",     Native_CShowActivityEx);
   CreateNative("CShowActivity2",      Native_CShowActivity2);
+  CreateNative("CSendMessage",        Native_CSendMessage);
   CreateNative("CColorExists",        Native_CColorExists);
   CreateNative("CGetTeamColor",       Native_CGetTeamColor);
   CreateNative("CAddColor",           Native_CAddColor);
@@ -131,6 +132,11 @@ void SFHCL_MC_CreateNatives()
 /* native void CPrintToChat(const int client, const char[] message, any ...); */
 public int Native_CPrintToChat(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(2, len);
+  if(len <= 0)
+    return 0;
+
   // Get and Verify client
   int client = GetNativeCell(1);
   
@@ -138,16 +144,15 @@ public int Native_CPrintToChat(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
   if(!IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
     
   // Set translation target before formatting message
   SetGlobalTransTarget(client);
-  
-  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
   if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChat");
 
-  Internal_ReplaceColors(message, sizeof(message));
-  Internal_SendMessage(client, message);
+  Internal_CSendMessage(client, 0, message, sizeof(message));
   return 0;
 }
 
@@ -156,6 +161,11 @@ public int Native_CPrintToChat(Handle plugin, int numParams)
 /* native void CPrintToChatAll(const char[] message, any ...); */
 public int Native_CPrintToChatAll(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(1, len);
+  if(len <= 0)
+    return 0;
+
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
   
   for(int i = 1; i <= MaxClients; ++i)
@@ -170,8 +180,7 @@ public int Native_CPrintToChatAll(Handle plugin, int numParams)
     if(FormatNativeString(0, 1, 2, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
       return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAll");
 
-    Internal_ReplaceColors(message, sizeof(message));
-    Internal_SendMessage(i, message);
+    Internal_CSendMessage(i, 0, message, sizeof(message));
   }
   return 0;
 }
@@ -181,6 +190,11 @@ public int Native_CPrintToChatAll(Handle plugin, int numParams)
 /* native void CPrintToChatEx(const int client, const int author, const char[] message, any ...); */
 public int Native_CPrintToChatEx(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return 0;
+
   // Get and Verify client/author
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
@@ -195,15 +209,14 @@ public int Native_CPrintToChatEx(Handle plugin, int numParams)
   if(!IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
 
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color  
+  
   // Set translation target before formatting message
   SetGlobalTransTarget(client);
-  
-  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
   if(FormatNativeString(0, 3, 4, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
 
-  Internal_ReplaceColors(message, sizeof(message));
-  Internal_SendMessage(client, message, author);
+  Internal_CSendMessage(client, author, message, sizeof(message));
   return 0;
 }
 
@@ -212,6 +225,11 @@ public int Native_CPrintToChatEx(Handle plugin, int numParams)
 /* native void CPrintToChatAllEx(const int author, const char[] message, any ...); */
 public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(2, len);
+  if(len <= 0)
+    return 0;
+
   int author = GetNativeCell(1);
   
   if(author < 1 || author > MaxClients)     // Can't PrintTochat the server
@@ -233,8 +251,7 @@ public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
     if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
       return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAllEx");
 
-    Internal_ReplaceColors(message, sizeof(message));
-    Internal_SendMessage(i, message, author);
+    Internal_CSendMessage(i, author, message, sizeof(message));
   }
   return 0;
 }
@@ -256,22 +273,35 @@ public int Native_CSkipNextClient(Handle plugin, int numParams)
 /* native void CReplyToCommand(const int client, const char[] message, any ...); */
 public int Native_CReplyToCommand(Handle plugin, int numParams)
 {
-  int client = GetNativeCell(1);
-  SetGlobalTransTarget(client);
+  int len;
+  GetNativeStringLength(2, len);
+  if(len <= 0)
+    return 0;
   
-  char message[MAX_BUFFER_LENGTH]; // No offset/default color since we're passing to other functions
-  if(FormatNativeString(0, 2, 3, sizeof(message), _, message) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CReplyToCommand");
+  // Get and Verify client
+  int client = GetNativeCell(1);
+  
+  if(client < 0 || client > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+  
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget((client) ? client : LANG_SERVER);
+  if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChat");
 
-  if(GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
+  if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
     // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
     // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
-    SFHCL_RemoveColours(message); 
+    SFHCL_RemoveColours(message);
     PrintToConsole(client, message);
   }
   else
-    CPrintToChat(client, message);
+    Internal_CSendMessage(client, 0, message, sizeof(message));
   return 0;
 }
 
@@ -279,23 +309,42 @@ public int Native_CReplyToCommand(Handle plugin, int numParams)
 /* native void CReplyToCommandEx(const int client, const int author, const char[] message, any ...); */
 public int Native_CReplyToCommandEx(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return 0;
+
+  // Get and Verify client/author
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
-  SetGlobalTransTarget(client);
   
-  char message[MAX_BUFFER_LENGTH]; // No offset/default color since we're passing to other functions
-  if(FormatNativeString(0, 3, 4, sizeof(message), _, message) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CReplyToCommandEx");
+  if(client < 0 || client > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(client != 0 && !IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+    
+  // Author of 0 will default to client in Internal_CSendMessage
+  if(author < 0 || author > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(author != 0 && !IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+    
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget((client) ? client : LANG_SERVER);
+  if(FormatNativeString(0, 3, 4, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
 
-  if(GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
+  if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
     // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
     // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
-    SFHCL_RemoveColours(message); 
+    SFHCL_RemoveColours(message);
     PrintToConsole(client, message);
   }
   else
-    CPrintToChatEx(client, author, message);
+    Internal_CSendMessage(client, author, message, sizeof(message));
   return 0;
 }
 
@@ -304,14 +353,22 @@ public int Native_CReplyToCommandEx(Handle plugin, int numParams)
 /* native void CShowActivity(const int client, const char[] message, any ...); */
 public int Native_CShowActivity(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(2, len);
+  if(len <= 0)
+    return 0;
+
   int client = GetNativeCell(1);
   
   if(client < 0 || client > MaxClients)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
   if(client != 0 && !IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
-
+  
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+    
+  // Set translation target before formatting message
+  SetGlobalTransTarget(LANG_SERVER);
   if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivity");
   
@@ -325,6 +382,11 @@ public int Native_CShowActivity(Handle plugin, int numParams)
 /* native void CShowActivityEx(const int client, const char[] tag, const char[] message, any ...); */
 public int Native_CShowActivityEx(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return 0;
+
   int client = GetNativeCell(1);
   
   if(client < 0 || client > MaxClients)
@@ -333,6 +395,9 @@ public int Native_CShowActivityEx(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
 
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+    
+  // Set translation target before formatting message
+  SetGlobalTransTarget(LANG_SERVER);
   if(FormatNativeString(0, 3, 4, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivityEx");
   
@@ -354,14 +419,22 @@ public int Native_CShowActivityEx(Handle plugin, int numParams)
 /* native void CShowActivity2(const int client, const char[] tag, const char[] message, any ...); */
 public int Native_CShowActivity2(Handle plugin, int numParams)
 {
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return 0;
+
   int client = GetNativeCell(1);
   
   if(client < 0 || client > MaxClients)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
   if(client != 0 && !IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
-
+  
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget(LANG_SERVER);
   if(FormatNativeString(0, 3, 4, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivity2");
   
@@ -380,6 +453,40 @@ public int Native_CShowActivity2(Handle plugin, int numParams)
 
 
 
+/* native void CSendMessage(const int client, const int author=0, const char[] message, any ...); */
+public int Native_CSendMessage(Handle plugin, int numParams)
+{
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return;
+  
+  int client = GetNativeCell(1);
+  int author = GetNativeCell(2);
+  
+  if(client < 1 || client > MaxClients)     // Can't PrintTochat the server
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
+  if(!IsClientInGame(client))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
+    
+  if(author < 1 || author > MaxClients)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(!IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+  
+  char message[MAX_BUFFER_LENGTH]; // No offset/default color since it should be done by here
+  
+  // Set translation target before formatting message
+  SetGlobalTransTarget(client);
+  if(FormatNativeString(0, 3, 4, sizeof(message), _, message) != SP_ERROR_NONE)
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CReplyToCommand");
+  
+  Internal_CSendMessage(client, author, message, sizeof(message));
+  return 0;
+}
+
+
+
 /* native bool CColorExists(const char[] color); */
 public int Native_CColorExists(Handle plugin, int numParams)
 {
@@ -388,8 +495,9 @@ public int Native_CColorExists(Handle plugin, int numParams)
   if(len <= 0)
     return view_as<int>(false);
   
-  char[] color = new char[len + 1]; // '\0'
-  GetNativeString(1, color, len + 1);
+  len += 1; // Add '\0'
+  char[] color = new char[len];
+  GetNativeString(1, color, len);
 
   int dummy;
   return view_as<int>(g_Colors.GetValue(color, dummy));
@@ -406,8 +514,6 @@ public int Native_CGetTeamColor(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, client);
   if(!IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
-
-  // Don't initialise g_Colors
   
   int gameColor = GAME_DEFAULT;
   if(g_Engine == Engine_DODS)
@@ -432,9 +538,10 @@ public int Native_CAddColor(Handle plugin, int numParams)
   if(len <= 0)
     return view_as<int>(false);
   
-  char[] name = new char[len + 1];
-  GetNativeString(1, name, len + 1);
-  Internal_ToLower(name, len + 1);
+  len += 1; // Add '\0'
+  char[] name = new char[len];
+  GetNativeString(1, name, len);
+  Internal_ToLower(name, len);
   
   return view_as<int>(g_Colors.SetValue(name, color, false)); // false = do not replace
 }
@@ -449,10 +556,11 @@ public int Native_CRemoveTags(Handle plugin, int numParams)
   if(len <= 0)
     return 0;
   
-  char[] msg = new char[len + 1];
-  GetNativeString(1, msg, len + 1);
+  len += 1; // Add '\0'
+  char[] msg = new char[len];
+  GetNativeString(1, msg, len);
 
-  // Only remove MoreColors tags, as anything else might be unexpected behaviour
+  // LEGACY API: Only remove MoreColors tags, as anything else might be unexpected behaviour
   SFHCL_RemoveColours(msg, false, false, true);
   return 0;
 }
@@ -474,6 +582,25 @@ public int Native_CReplaceColorCodes(Handle plugin, int numParams)
   Internal_ReplaceColors(msg, len);
   SetNativeString(1, msg, len);
   return 0;
+}
+
+
+
+
+//=================================
+// Shared Internals
+
+/**
+ * Send a colored SayText2 usermessage to a client (prints to chat)
+ * Does not do safety checking. It should be done before using this.
+ * This function should have minimal overhead as it's used
+ * by most of the natives at the end of their processing.
+ */
+void Internal_CSendMessage(const int client, const int author, const char[] message, const int maxlength)
+{
+  Internal_ReplaceColors(message, maxlength);
+  Internal_SayText2(client, message, author);
+  return;
 }
 
 
@@ -596,7 +723,7 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
  * @param author      Optional client index to use for {teamcolor} tags, or 0 for none
  * @noreturn
  */
-static void Internal_SendMessage(const int client, const char[] msg, int author=0)
+static void Internal_SayText2(const int client, const char[] msg, int author=0)
 {
   if(author == 0)
     author = client;

@@ -16,7 +16,8 @@
 // SFH ChatLib Natives
 
 /**
- * Prepends CReplyToCommand with a coloured command ("[SM]") tag.
+ * Prepends ReplyToCommand with a coloured command ("[SM]") tag.
+ * Removes colour if printing to console.
  *
  * @param client  Client who issued command
  * @param msg     String to print
@@ -26,7 +27,8 @@
 native void TagReply(const int client, const char[] msg, any ...);
 
 /**
- * Prepends CReplyToCommand with a coloured command ("[SM]") tag.
+ * Prepends ReplyToCommand with a coloured command ("[SM]") tag.
+ * Removes colour if printing to console.
  *
  * @param client  Client who issued command
  * @param author  Client to use for team colour/{teamcolor}
@@ -37,7 +39,8 @@ native void TagReply(const int client, const char[] msg, any ...);
 native void TagReplyEx(const int client, const int author, const char[] msg, any ...);
 
 /**
- * Prepends CReplyToCommand with a coloured command usage ("[SM] Usage:") tag.
+ * Prepends ReplyToCommand with a coloured command usage ("[SM] Usage:") tag.
+ * Removes colour if printing to console.
  *
  * @param client  Client who issued command
  * @param msg     String to print
@@ -47,7 +50,8 @@ native void TagReplyEx(const int client, const int author, const char[] msg, any
 native void TagReplyUsage(const int client, const char[] msg, any ...);
 
 /**
- * Prepends CReplyToCommand with a coloured command usage ("[SM] Usage:") tag.
+ * Prepends ReplyToCommand with a coloured command usage ("[SM] Usage:") tag.
+ * Removes colour if printing to console.
  *
  * @param client  Client who issued command
  * @param author  Client to use for team colour/{teamcolor}
@@ -60,7 +64,7 @@ native void TagReplyUsageEx(const int client, const int author, const char[] msg
 
 
 /**
- * Prepends CPrintToChat with a coloured command ("[SM]") tag.
+ * Prepends PrintToChat with a coloured command ("[SM]") tag.
  *
  * @param client  Client who issued command
  * @param msg     String to print
@@ -70,7 +74,7 @@ native void TagReplyUsageEx(const int client, const int author, const char[] msg
 native void TagPrintChat(const int client, const char[] msg, any ...);
 
 /**
- * Prepends CPrintToChatEx with a coloured command ("[SM]") tag.
+ * Prepends PrintToChatEx with a coloured command ("[SM]") tag.
  *
  * @param client  Client who issued command
  * @param author  Client to use for team colour/{teamcolor}
@@ -81,7 +85,7 @@ native void TagPrintChat(const int client, const char[] msg, any ...);
 native void TagPrintChatEx(const int client, const int author, const char[] msg, any ...);
 
 /**
- * Prepends CPrintToChatAll with a coloured command ("[SM]") tag.
+ * Prepends PrintToChatAll with a coloured command ("[SM]") tag.
  *
  * @param msg     String to print
  * @param ...     Optional. Format-Class Function
@@ -90,7 +94,7 @@ native void TagPrintChatEx(const int client, const int author, const char[] msg,
 native void TagPrintChatAll(const char[] msg, any ...);
 
 /**
- * Prepends CPrintToChatAllEx with a coloured command ("[SM]") tag.
+ * Prepends PrintToChatAllEx with a coloured command ("[SM]") tag.
  *
  * @param author  Client to use for team colour/{teamcolor}
  * @param msg     String to print
@@ -102,7 +106,7 @@ native void TagPrintChatAllEx(const int author, const char[] msg, any ...);
 
 
 /**
- * Prepends CShowActivity2 with a coloured command ("[SM]") tag.
+ * Prepends ShowActivity2 with a coloured command ("[SM]") tag.
  *
  * @param client  Client who issued command
  * @param msg     String to print
@@ -115,7 +119,7 @@ native void TagActivity2(const int client, const char[] msg, any ...);
 // AND we cant filter colours for the ShowActivity functions.
 
 /**
- * Prepends CShowActivityEx with a coloured command ("[SM]") tag.
+ * Prepends ShowActivityEx with a coloured command ("[SM]") tag.
  *
  * @param client  Client who issued command
  * @param msg     String to print
@@ -134,31 +138,6 @@ native void TagActivityEx(const int client, const char[] msg, any ...);
  * @noreturn
  */
 native void TagPrintServer(const char[] msg, any ...);
-
-/**
- * Print a message to a client when you don't have a known ReplySource,
- * Prepending with a command ("[SM]") tag which is only coloured in chat.
- * Prints to chat for players and to console for the rcon.
- *
- * @param client  Client who issued command
- * @param msg     String to print
- * @param ...     Optional. Format-Class Function
- * @noreturn
- */
-native void TagPrintToClient(const int client, const char[] msg, any ...);
-
-/**
- * Print a message to a client when you don't have a known ReplySource,
- * Prepending with a command ("[SM]") tag which is only coloured in chat.
- * Prints to chat for players and to console for the rcon.
- *
- * @param client  Client who issued command
- * @param author  Client to use for team colour/{teamcolor}
- * @param msg     String to print
- * @param ...     Optional. Format-Class Function
- * @noreturn
- */
-native void TagPrintToClientEx(const int client, const int author, const char[] msg, any ...);
 
 
 
@@ -300,6 +279,15 @@ native void CShowActivityEx(const int client, const char[] tag, const char[] mes
 native void CShowActivity2(const int client, const char[] tag, const char[] message, any ...);
 
 /**
+ * Send a colored SayText2 usermessage to a client (prints to chat)
+ *
+ * @param client        Client to send usermessage to
+ * @param author        Optional client index to use for {teamcolor} tags, or 0 for none
+ * @param message       Message to send (formatting rules)
+ */
+native void CSendMessage(const int client, const int author=0, const char[] message, any ...);
+
+/**
  * Determines whether a color name exists
  * 
  * @param color         The color name to check
@@ -371,7 +359,6 @@ public __pl_sfh_chatlib_SetNTVOptional()
   MarkNativeAsOptional("TagPrintChat");
   MarkNativeAsOptional("TagActivity2");
   MarkNativeAsOptional("TagPrintServer");
-  MarkNativeAsOptional("TagPrintToClient");
   
   // New ChatLib natives added for complete API
   MarkNativeAsOptional("TagReplyUsageEx");
@@ -380,7 +367,6 @@ public __pl_sfh_chatlib_SetNTVOptional()
   MarkNativeAsOptional("TagPrintChatAllEx");
   MarkNativeAsOptional("TagReplyEx");
   MarkNativeAsOptional("TagActivityEx");
-  MarkNativeAsOptional("TagPrintToClientEx");
   
   MarkNativeAsOptional("SFHCL_RemoveColours");
   MarkNativeAsOptional("SFHCL_IsSingleByteColour");
@@ -391,14 +377,16 @@ public __pl_sfh_chatlib_SetNTVOptional()
   MarkNativeAsOptional("CPrintToChatEx");
   MarkNativeAsOptional("CPrintToChatAllEx");
   MarkNativeAsOptional("CSkipNextClient");
-  MarkNativeAsOptional("CAddColor");
-  MarkNativeAsOptional("CRemoveTags");
   MarkNativeAsOptional("CReplyToCommand");
   MarkNativeAsOptional("CReplyToCommandEx");
   MarkNativeAsOptional("CShowActivity");
   MarkNativeAsOptional("CShowActivityEx");
   MarkNativeAsOptional("CShowActivity2");
+  MarkNativeAsOptional("CSendMessage");
   MarkNativeAsOptional("CColorExists");
   MarkNativeAsOptional("CGetTeamColor");
+  MarkNativeAsOptional("CAddColor");
+  MarkNativeAsOptional("CRemoveTags");
+  MarkNativeAsOptional("CReplaceColorCodes");
 }
 #endif
