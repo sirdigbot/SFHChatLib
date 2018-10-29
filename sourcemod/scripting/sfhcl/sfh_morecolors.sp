@@ -649,17 +649,28 @@ void Internal_ReplaceColors(char[] buffer, const int maxlength)
   }
   
   // Trim colours from the end of the message (if replacements were done)
-  
-  // TODO / BUG: Ending a message on "\x07ABCABC" and no text afterwards wont display the color
-  // Instead, it displays the hex code.
-  // The control character remains invisible though, so this doesnt happen with {default} or {teamcolor}
-  // The below will remove this just for cleanliness
+  //
+  // TODO / BUG:
+  // If a string ends on a custom color (\x07ABCABC or \x08ABCABCFF) the color fails but the hex code shows.
+  // This is not a problem with the plugin as it will happen if you type the characters into chat yourself.
+  // The below snippet removes these colors manually.
   
   if(matches > 0)
   {
-    int colorChar = strlen(buffer) - 7; // Get \x07 index of last color ("\x07ABCABC")
-    if(colorChar > -1 && buffer[colorChar] == '\x07')
-      buffer[colorChar] = '\0';         // Terminate to 'erase' hex string
+    // Remove last \x07, if any
+    int colorChar = strlen(buffer) - 7;
+    if(colorChar < 0)
+      return;
+    
+    if(buffer[colorChar] == '\x07')
+      buffer[colorChar] = '\0'; // Terminate to 'erase' hex string
+    else
+    {
+      // No \x07. Remove last \x08, if any
+      colorChar -= 2;
+      if(colorChar > -1 && buffer[colorChar] == '\x08')
+        buffer[colorChar] = '\0';
+    }
   }
   return;
 }
@@ -698,7 +709,7 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
   if(StrEqual(tag, TAG_DEFAULTCOLOR, true))
   {
     strcopy(output, maxlength, "\x01");
-    return 2;                     // Return new tag size (Incl '\0')
+    return 2;             // Return new tag size (Incl '\0')
   }
   else if(StrEqual(tag, TAG_TEAMCOLOR, true))
   {
@@ -709,12 +720,13 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
   
   // Allow for strlen(tag) override
   if(tagLen <= 0)
-    tagLen = strlen(tag);         // tagLen is not reference
+    tagLen = strlen(tag); // tagLen is not reference
   
   // Get tag inner text
-  int len     = tagLen - 1;       // Remove {}'s (TAG_OPEN/CLOSE_CHAR), Add '\0' 
+  int len = tagLen - 1;   // Remove {}'s (TAG_OPEN/CLOSE_CHAR), Add '\0' 
   char[] name = new char[len];  
   strcopy(name, len, tag[1]);
+
   
   /**
    * Regex Info:
@@ -725,25 +737,28 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
    * Alpha invert will only work on 8-digit hex codes
    */
   
-  // Get tag properties (ints so we can use as string offset)
+  // Get tag properties
   int color;
-  int inverted  = (name[0] == '!' || name[0] == '^') ? 1 : 0;
-  int hex       = (name[0] == '#' || name[1] == '#') ? 1 : 0;
+  int inverted  = (name[0] == '!' || name[0] == '^') ? 1 : 0; // Int so it can be an offset
+  bool hex      = (name[0] == '#' || name[1] == '#');
   
   if(hex)
   {
-    // Hex or Hex+Alpha Name Size: (8):"#FF00FF", (9):"!#FF00FF", (10):"#FF00FF33", (11):"!#FF00FF33"
+    // Hex or Hex+Alpha String Size: (8):"#FF00FF", (9):"!#FF00FF", (10):"#FF00FF33", (11):"!#FF00FF33"
     if(len >= 8 && len <= 11)
     {
-      color = StringToInt(name[1 + inverted], 16);            // Offset '!' if there is one
+      color = StringToInt(name[1 + inverted], 16);              // Offset '#' and '!' if there is one
       
-      // If inverted, invert either preserving alpha or not
-      if(inverted)
-        color ^= (name[0] == '^') ? 0xffffffff : 0xffffff00;  // TODO: Figure out if this has endianness
-      
-      // If Hex+Alpha, do special format and return
-      if(len > 9)
+      // If Hex+Alpha, do special invert, format and then return
+      if(len >= 10)
       {
+        // Check for alpha-included invert
+        if(inverted)
+          color ^= (name[0] == '^') ? 0xFFFFFFFF : 0xFFFFFF00;
+          
+         // TODO / BUG: Endianness issues?
+         // Hex+Alpha needs 0xFFFFFF00 but regular hex needs 0x00FFFFFF
+        
         Format(output, maxlength, "\x08%08X", color);
         return 10;
       }
@@ -755,10 +770,11 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
   {
     if(!g_Colors.GetValue(name[inverted], color))
       return 0;
-      
-    if(inverted)
-      color ^= 0xffffff00; // Invert (always preserve alpha, 0x07 doesnt support it)
   }
+  
+  // Invert (always preserve alpha, 0x07 doesnt support it)
+  if(inverted)
+    color ^= 0x00FFFFFF;
 
   Format(output, maxlength, "\x07%06X", color);
   return 8;
