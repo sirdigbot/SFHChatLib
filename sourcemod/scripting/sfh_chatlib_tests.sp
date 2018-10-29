@@ -243,29 +243,29 @@ public Action CMD_TestMoreColors(int client, int args)
    
   PrintToChat(client, "1. Regular");
   CPrintToChat(client, "{gold}AB{default}CD");
-  CPrintToChat(client, "{default}AB{gold}CD");        // Short custom
-  CPrintToChat(client, "{default}AB{yellowgreen}CD"); // Long custom (>8)
-  CPrintToChat(client, "{default}AB{!gold}CD");       // Custom Invert
-  CPrintToChat(client, "{default}AB{#FF00FF}CD");     // Hex
-  CPrintToChat(client, "{default}AB{!#FF00FF}CD");    // Hex Invert
-  CPrintToChat(client, "{default}AB{^#FF00FF}CD");    // Hex Full Invert (should be same as regular invert)
-  CPrintToChat(client, "{default}AB{#FF00FF55}CD");   // Hex+Alpha
-  CPrintToChat(client, "{default}AB{!#FF00FF55}CD");  // Hex+Alpha Invert
-  CPrintToChat(client, "{default}AB{^#FF00FF55}CD");  // Hex+Alpha Full Invert
+  CPrintToChat(client, "<8 Custom:{default}AB{gold}CD");          // Short custom
+  CPrintToChat(client, ">8 Custom:{default}AB{yellowgreen}CD");   // Long custom (>8)
+  CPrintToChat(client, "Custom Inv:{default}AB{!gold}CD");        // Custom Invert
+  CPrintToChat(client, "Hex:{default}AB{#FF00FF}CD");             // Hex
+  CPrintToChat(client, "Hex Invert:{default}AB{!#FF00FF}CD");     // Hex Invert
+  CPrintToChat(client, "Hex ^Inv:{default}AB{^#FF00FF}CD");       // Hex Full Invert (should be same as regular invert)
+  CPrintToChat(client, "Hex+A:{default}AB{#FF00FF66}CD");         // Hex+Alpha
+  CPrintToChat(client, "Hex+A Inv:{default}AB{!#FF00FF66}CD");    // Hex+Alpha Invert
+  CPrintToChat(client, "Hex+A ^Inv:{default}AB{^#FF00FF66}CD");   // Hex+Alpha Full Invert
   CPrintToChat(client, "{default}AB{teamcolor}CD");
   CPrintToChat(client, "{gold}AB{teamcolor}CD");
   
   PrintToChat(client, "2. Regular Trail");
   CPrintToChat(client, "AB{gold}CD{default}");
-  CPrintToChat(client, "AB{default}CD{gold}");        // Short custom
-  CPrintToChat(client, "AB{default}CD{yellowgreen}"); // Long custom (>8)
-  CPrintToChat(client, "AB{default}CD{!gold}");       // Custom Invert
-  CPrintToChat(client, "AB{default}CD{#FF00FF}");     // Hex
-  CPrintToChat(client, "AB{default}CD{!#FF00FF}");    // Hex Invert
-  CPrintToChat(client, "AB{default}CD{^#FF00FF}");    // Hex Full Invert (should be same as regular invert)
-  CPrintToChat(client, "AB{default}CD{#FF00FF55}");   // Hex+Alpha
-  CPrintToChat(client, "AB{default}CD{!#FF00FF55}");  // Hex+Alpha Invert
-  CPrintToChat(client, "AB{default}CD{^#FF00FF55}");  // Hex+Alpha Full Invert
+  CPrintToChat(client, "<8 Custom:AB{default}CD{gold}");          // Short custom
+  CPrintToChat(client, ">8 Custom:AB{default}CD{yellowgreen}");   // Long custom (>8)
+  CPrintToChat(client, "Custom Inv:AB{default}CD{!gold}");        // Custom Invert
+  CPrintToChat(client, "Hex:AB{default}CD{#FF00FF}");             // Hex
+  CPrintToChat(client, "Hex Inv:AB{default}CD{!#FF00FF}");        // Hex Invert
+  CPrintToChat(client, "Hex ^Inv:AB{default}CD{^#FF00FF}");       // Hex Full Invert (should be same as regular invert)
+  CPrintToChat(client, "Hex+A:AB{default}CD{#FF00FF66}");         // Hex+Alpha
+  CPrintToChat(client, "Hex+A Inv:AB{default}CD{!#FF00FF66}");    // Hex+Alpha Invert
+  CPrintToChat(client, "Hex+A ^Inv:AB{default}CD{^#FF00FF66}");   // Hex+Alpha Full Invert
   CPrintToChat(client, "AB{default}CD{teamcolor}");
   CPrintToChat(client, "AB{gold}CD{teamcolor}");
   
