@@ -180,40 +180,49 @@ public Action CMD_TestPrints(int client, int args)
   
   
   // Older SFP Natives
-  if(StrEqual(arg3, "TagReply", false))
+  if(StrEqual(arg3, "TagReply", true))
     TagReply(target, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagReplyUsage", false))
+  else if(StrEqual(arg3, "TagReplyUsage", true))
     TagReplyUsage(target, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintChat", false))
+  else if(StrEqual(arg3, "TagPrintChat", true))
     TagPrintChat(target, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagActivity2", false))
+  else if(StrEqual(arg3, "TagActivity2", true)) // TagActivityEx and TagActivity2 have identical code
     TagActivity2(target, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintServer", false))
+  else if(StrEqual(arg3, "TagPrintServer", true))
     TagPrintServer(argFull[messageIdx]);
   
   
   // New natives added for complete API
-  else if(StrEqual(arg3, "TagReplyUsageEx", false))
+  else if(StrEqual(arg3, "TagReplyUsageEx", true))
     TagReplyUsageEx(target, author, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintChatAll", false))
+  else if(StrEqual(arg3, "TagPrintChatAll", true))
     TagPrintChatAll(argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintChatEx", false))
+  else if(StrEqual(arg3, "TagPrintChatEx", true))
     TagPrintChatEx(target, author, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintChatAllEx", false))
+  else if(StrEqual(arg3, "TagPrintChatAllEx", true))
     TagPrintChatAllEx(author, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagReplyEx", false))
+  else if(StrEqual(arg3, "TagReplyEx", true))
     TagReplyEx(target, author, argFull[messageIdx]);
     
-  else if(StrEqual(arg3, "TagActivityEx", false))
-    TagActivityEx(author, argFull[messageIdx]);
+  // MoreColors Print Natives
+  else if(StrEqual(arg3, "CPrintToChat", true))
+    CPrintToChat(target, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CPrintToChatAll", true))
+    CPrintToChatAll(argFull[messageIdx]);
+  else if(StrEqual(arg3, "CPrintToChatEx", true))
+    CPrintToChatEx(target, author, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CPrintToChatAllEx", true))
+    CPrintToChatAllEx(author, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CReplyToCommand", true))
+    CReplyToCommand(target, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CReplyToCommandEx", true))
+    CReplyToCommandEx(target, author, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CShowActivity", true))
+    CShowActivity(target, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CShowActivity2", true)) // CShowActivityEx and CShowActivity2 have identical code
+    CShowActivity2(target, "{green}TAG {default}", argFull[messageIdx]);
+  else if(StrEqual(arg3, "CSendMessage", true))
+    CSendMessage(target, author, argFull[messageIdx]);
   
   
   else
@@ -229,25 +238,41 @@ public Action CMD_TestMoreColors(int client, int args)
   /**
    * I'll be honest, these are pretty much useless as tests.
    * But I don't know how to do it better
+   * Also dont run this on a normal server because it's awfully laggy
    */
    
   PrintToChat(client, "1. Regular");
   CPrintToChat(client, "{gold}AB{default}CD");
   CPrintToChat(client, "{default}AB{gold}CD");        // Short custom
   CPrintToChat(client, "{default}AB{yellowgreen}CD"); // Long custom (>8)
+  CPrintToChat(client, "{default}AB{!gold}CD");       // Custom Invert
+  CPrintToChat(client, "{default}AB{#FF00FF}CD");     // Hex
+  CPrintToChat(client, "{default}AB{!#FF00FF}CD");    // Hex Invert
+  CPrintToChat(client, "{default}AB{^#FF00FF}CD");    // Hex Full Invert (should be same as regular invert)
+  CPrintToChat(client, "{default}AB{#FF00FF55}CD");   // Hex+Alpha
+  CPrintToChat(client, "{default}AB{!#FF00FF55}CD");  // Hex+Alpha Invert
+  CPrintToChat(client, "{default}AB{^#FF00FF55}CD");  // Hex+Alpha Full Invert
   CPrintToChat(client, "{default}AB{teamcolor}CD");
   CPrintToChat(client, "{gold}AB{teamcolor}CD");
   
   PrintToChat(client, "2. Regular Trail");
-  CPrintToChat(client, "{gold}AB{default}");
-  CPrintToChat(client, "{default}AB{gold}");          // Short custom
-  CPrintToChat(client, "{default}AB{yellowgreen}");   // Long custom (>8)
-  CPrintToChat(client, "{default}AB{teamcolor}");
-  CPrintToChat(client, "{gold}AB{teamcolor}");
+  CPrintToChat(client, "AB{gold}CD{default}");
+  CPrintToChat(client, "AB{default}CD{gold}");        // Short custom
+  CPrintToChat(client, "AB{default}CD{yellowgreen}"); // Long custom (>8)
+  CPrintToChat(client, "AB{default}CD{!gold}");       // Custom Invert
+  CPrintToChat(client, "AB{default}CD{#FF00FF}");     // Hex
+  CPrintToChat(client, "AB{default}CD{!#FF00FF}");    // Hex Invert
+  CPrintToChat(client, "AB{default}CD{^#FF00FF}");    // Hex Full Invert (should be same as regular invert)
+  CPrintToChat(client, "AB{default}CD{#FF00FF55}");   // Hex+Alpha
+  CPrintToChat(client, "AB{default}CD{!#FF00FF55}");  // Hex+Alpha Invert
+  CPrintToChat(client, "AB{default}CD{^#FF00FF55}");  // Hex+Alpha Full Invert
+  CPrintToChat(client, "AB{default}CD{teamcolor}");
+  CPrintToChat(client, "AB{gold}CD{teamcolor}");
   
   PrintToChat(client, "3. Invalid");
-  CPrintToChat(client, "{geld}AB{}CD{t}EF");
-  CPrintToChat(client, "AB{geld}CD{}EF{t}");
+  CPrintToChat(client, "{geld}AB{}CD{!default}EF{t}GH");
+  CPrintToChat(client, "AB{geld}CD{}EF{!default}GH{t}");
+  CPrintToChat(client, "AB{geld}CD{}EF{^default}GH{t}");
 
   PrintToChat(client, "4. Combo + Combo Trail");
   CPrintToChat(client, "{teamcolor}AB{geld}CD{gold}EF{default}GH");
