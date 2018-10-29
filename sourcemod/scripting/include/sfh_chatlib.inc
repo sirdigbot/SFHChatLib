@@ -308,7 +308,7 @@ native void CShowActivity2(const int client, const char[] tag, const char[] mess
 native bool CColorExists(const char[] color);
 
 /**
- * Returns the hexadecimal representation of a client's team color (will NOT initialize the trie, so if you use only this function from this include file, your plugin's memory usage will not increase)
+ * Returns the hexadecimal representation of a client's team color
  *
  * @param client        Client to get the team color for
  * @return              Client's team color in hexadecimal, or green if unknown

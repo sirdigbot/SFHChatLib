@@ -58,11 +58,11 @@
 #define TAG_CLOSE_CHAR    '}'
 #define TAG_DEFAULTCOLOR  "{default}"
 #define TAG_TEAMCOLOR     "{teamcolor}"
-#define TAG_REGEX         "{[a-zA-Z0-9]+}" // Must not allow TAG_OPEN/CLOSE_CHAR
+#define TAG_REGEX         "{[a-zA-Z0-9]+}"    // Must not allow TAG_OPEN/CLOSE_CHAR
 
-static bool g_SkipList[MAXPLAYERS + 1]; // Whether or not to skip a player for PrintToChatAll/Ex
-static StringMap g_Colors;
-static Regex g_TagRegex;
+static bool       g_SkipList[MAXPLAYERS + 1]; // Whether or not to skip a player for PrintToChatAll/Ex
+static StringMap  g_Colors;
+static Regex      g_TagRegex;
 
 // For games that don't support SayText2, team colors must be done manually.
 // First index is GAME_* index.
@@ -95,6 +95,8 @@ void SFHCL_MC_OnPluginStart()
   g_TagRegex = CompileRegex(TAG_REGEX);
   if(g_TagRegex == INVALID_HANDLE)
     ThrowError("%T", "SFHCL_RegexFail", LANG_SERVER);
+    
+  Internal_InitColors();
   return;
 }
 
@@ -144,7 +146,6 @@ public int Native_CPrintToChat(Handle plugin, int numParams)
   if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChat");
 
-  Internal_InitColors();
   Internal_ReplaceColors(message, sizeof(message));
   Internal_SendMessage(client, message);
   return 0;
@@ -155,7 +156,6 @@ public int Native_CPrintToChat(Handle plugin, int numParams)
 /* native void CPrintToChatAll(const char[] message, any ...); */
 public int Native_CPrintToChatAll(Handle plugin, int numParams)
 {
-  Internal_InitColors();
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
   
   for(int i = 1; i <= MaxClients; ++i)
@@ -202,7 +202,6 @@ public int Native_CPrintToChatEx(Handle plugin, int numParams)
   if(FormatNativeString(0, 3, 4, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
 
-  Internal_InitColors();
   Internal_ReplaceColors(message, sizeof(message));
   Internal_SendMessage(client, message, author);
   return 0;
@@ -220,7 +219,6 @@ public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
   if(!IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
   
-  Internal_InitColors();
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
   
   for(int i = 1; i <= MaxClients; ++i)
@@ -317,7 +315,6 @@ public int Native_CShowActivity(Handle plugin, int numParams)
   if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivity");
   
-  Internal_InitColors();
   Internal_ReplaceColors(message, sizeof(message));
   ShowActivity(client, message);
   return 0;
@@ -346,7 +343,6 @@ public int Native_CShowActivityEx(Handle plugin, int numParams)
   char[] tag = new char[tagLen];  
   GetNativeString(2, tag, tagLen);
   
-  Internal_InitColors();
   Internal_ReplaceColors(message, sizeof(message));
   Internal_ReplaceColors(tag, tagLen);
   ShowActivityEx(client, tag, message);
@@ -376,7 +372,6 @@ public int Native_CShowActivity2(Handle plugin, int numParams)
   char[] tag = new char[tagLen];  
   GetNativeString(2, tag, tagLen);
   
-  Internal_InitColors();
   Internal_ReplaceColors(message, sizeof(message));
   Internal_ReplaceColors(tag, tagLen);
   ShowActivity2(client, tag, message);
@@ -396,7 +391,6 @@ public int Native_CColorExists(Handle plugin, int numParams)
   char[] color = new char[len + 1]; // '\0'
   GetNativeString(1, color, len + 1);
 
-  Internal_InitColors();
   int dummy;
   return view_as<int>(g_Colors.GetValue(color, dummy));
 }
@@ -442,7 +436,6 @@ public int Native_CAddColor(Handle plugin, int numParams)
   GetNativeString(1, name, len + 1);
   Internal_ToLower(name, len + 1);
   
-  Internal_InitColors();
   return view_as<int>(g_Colors.SetValue(name, color, false)); // false = do not replace
 }
 
@@ -509,8 +502,6 @@ static void Internal_ToLower(char[] str, const int maxlength)
  */
 static void Internal_ReplaceColors(char[] buffer, const int maxlength)
 {
-  Internal_InitColors();
-  
   /**
    * Note to any optimisers: Here be dragons. And Un-debuggable Access Violations.
    */
@@ -585,8 +576,6 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
   int len     = tagLen - 1;       // Remove {}'s (TAG_OPEN/CLOSE_CHAR), Add '\0' 
   char[] name = new char[len];  
   strcopy(name, len, tag[1]);
-
-  Internal_InitColors();
   
   int color;
   if(g_Colors.GetValue(name, color))
