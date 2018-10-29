@@ -194,9 +194,6 @@ public Action CMD_TestPrints(int client, int args)
     
   else if(StrEqual(arg3, "TagPrintServer", false))
     TagPrintServer(argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintToClient", false))
-    TagPrintToClient(target, argFull[messageIdx]);
   
   
   // New natives added for complete API
@@ -217,9 +214,6 @@ public Action CMD_TestPrints(int client, int args)
     
   else if(StrEqual(arg3, "TagActivityEx", false))
     TagActivityEx(author, argFull[messageIdx]);
-    
-  else if(StrEqual(arg3, "TagPrintToClientEx", false))
-    TagPrintToClientEx(target, author, argFull[messageIdx]);
   
   
   else
