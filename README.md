@@ -7,7 +7,7 @@ Automatically removes colours when printing to rcon/console.
 
 Note: The *Ex* natives are identical as the non-ex counterparts, but with support for controlling `{teamcolor}`  
 
-[MoreColors Natives](#morecolors)  
+[MoreColors](#morecolors)  
 [TagReply*](#tagreply)  
 [TagPrintToChat*](#tagprintchat)  
 [TagActivity*](#tagactivity)  
@@ -19,15 +19,27 @@ Note: The *Ex* natives are identical as the non-ex counterparts, but with suppor
 
 <a name="morecolors"/>
 
-## MoreColors Natives
-Native reimplementation of MoreColors 1.9.1 with minor optimisations and improvements.  
+## MoreColors
+SFH ChatLib has a Native reimplementation of MoreColors 1.9.1 with minor optimisations and improvements.  
 Notable Changes:
  - Sourcemod 1.7+ Syntax  
+ - Hexadecimal (6 digit) and Hexadecimal+Alpha (8 digit) tag modifier  
+ - Complementary colour tag modifiers (optional alpha)  
  - Natives added for CReplaceColorCodes and CSendMessage  
  - Fixed\* Translation Support
  - Better Tag Processing and Colour Stripping  
  - Minor Parameter Changes  
  - Minor Optimisations  
+
+Hexadecimal colours require a `#` before the tag name (always *after* complementary colour modifer).  
+The hex codes must be 6 or 8 digits/characters (RRGGBB OR RRGGBBAA).  
+e.g. `{#B4DA55}` or `{#AA0099AA}`  
+ 
+To get a complementary colour, add `!` (colour-only) or `^` (alpha included) to the start of a tag name.  
+Complementary colours wont work on `{default}` or `{teamcolor}`, and alpha only has an effect on 8-digit hex codes.  
+e.g. `{!cyan}`, `{!#AA00AA}` or `{^#7700FF22}`  
+
+### MoreColors Natives
 
 ```
 /**

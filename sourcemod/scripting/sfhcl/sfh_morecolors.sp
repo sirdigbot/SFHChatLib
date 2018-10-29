@@ -58,9 +58,18 @@
 #define TAG_CLOSE_CHAR    '}'
 #define TAG_DEFAULTCOLOR  "{default}"
 #define TAG_TEAMCOLOR     "{teamcolor}"
-#define TAG_REGEX         "{[a-zA-Z0-9]+}"    // Must not allow TAG_OPEN/CLOSE_CHAR
+#define TAG_REGEX         "{[!\\^]?#?[a-zA-Z0-9]+}"  // Must not allow TAG_OPEN/CLOSE_CHAR
 
-static bool       g_SkipList[MAXPLAYERS + 1]; // Whether or not to skip a player for PrintToChatAll/Ex
+// Regex Info:
+// ! -- Complementary Color (Invert Color only)
+// ^ -- Complementary Color (Invert Color+Alpha)
+// # -- Name is Hex (6 digits) or 6-digit Hex+Alpha (8 digits) Color
+// Only 1 invert may be used at a time. Invert will not have an affect on {default} or {teamcolor}
+// Alpha invert will only work on 8-digit hex codes
+
+
+
+bool       g_SkipList[MAXPLAYERS + 1];   // Whether or not to skip a player for PrintToChatAll/Ex
 static StringMap  g_Colors;
 static Regex      g_TagRegex;
 
@@ -296,8 +305,8 @@ public int Native_CReplyToCommand(Handle plugin, int numParams)
   if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
     // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
-    // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
-    SFHCL_RemoveColours(message);
+    // SFHCL_RemoveColours/RemoveChatColours removes colour bytes too (\x01, \x07ABCABC, etc.).
+    RemoveChatColours(message, sizeof(message));
     PrintToConsole(client, message);
   }
   else
@@ -339,8 +348,8 @@ public int Native_CReplyToCommandEx(Handle plugin, int numParams)
   if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
     // MoreColors uses CRemoveTags, which only removes "{these}" for legacy-compatability.
-    // SFHCL_RemoveColours removes colour bytes too (\x01, \x07ABCABC, etc.).
-    SFHCL_RemoveColours(message);
+    // SFHCL_RemoveColours/RemoveChatColours removes colour bytes too (\x01, \x07ABCABC, etc.).
+    RemoveChatColours(message, sizeof(message));
     PrintToConsole(client, message);
   }
   else
@@ -459,7 +468,7 @@ public int Native_CSendMessage(Handle plugin, int numParams)
   int len;
   GetNativeStringLength(3, len);
   if(len <= 0)
-    return;
+    return 0;
   
   int client = GetNativeCell(1);
   int author = GetNativeCell(2);
@@ -561,7 +570,7 @@ public int Native_CRemoveTags(Handle plugin, int numParams)
   GetNativeString(1, msg, len);
 
   // LEGACY API: Only remove MoreColors tags, as anything else might be unexpected behaviour
-  SFHCL_RemoveColours(msg, false, false, true);
+  RemoveChatColours(msg, false, false, true);
   return 0;
 }
 
@@ -596,28 +605,13 @@ public int Native_CReplaceColorCodes(Handle plugin, int numParams)
  * This function should have minimal overhead as it's used
  * by most of the natives at the end of their processing.
  */
-void Internal_CSendMessage(const int client, const int author, const char[] message, const int maxlength)
+void Internal_CSendMessage(const int client, const int author, char[] message, const int maxlength)
 {
   Internal_ReplaceColors(message, maxlength);
   Internal_SayText2(client, message, author);
   return;
 }
 
-
-
-
-//=================================
-// Internals
-
-/**
- * Make a string all lowercase
- * Not Multi-byte safe.
- */
-static void Internal_ToLower(char[] str, const int maxlength)
-{
-  for(int i = 0; i < maxlength; ++i)
-    str[i] = CharToLower(str[i]);
-}
 
 
 /**
@@ -627,14 +621,14 @@ static void Internal_ToLower(char[] str, const int maxlength)
  * @param maxlength   Maxium length of string.
  * @noreturn
  */
-static void Internal_ReplaceColors(char[] buffer, const int maxlength)
+void Internal_ReplaceColors(char[] buffer, const int maxlength)
 {
   /**
    * Note to any optimisers: Here be dragons. And Un-debuggable Access Violations.
    */
 
   char tag[32];  
-  char colorStr[8]; // TagToColorBytes needs only 8 for output
+  char colorStr[10]; // TagToColorBytes needs 10 max for output
   
   int matches = g_TagRegex.MatchAll(buffer);
   for(int i = 0; i < matches; ++i)
@@ -670,6 +664,22 @@ static void Internal_ReplaceColors(char[] buffer, const int maxlength)
   return;
 }
 
+
+
+
+//=================================
+// Internals
+
+/**
+ * Make a string all lowercase
+ */
+static void Internal_ToLower(char[] str, const int maxlength)
+{
+  for(int i = 0; i < maxlength; ++i)
+    str[i] = CharToLower(str[i]); // CharToLower wont affect multibyte characters
+}
+
+
 /**
  * Convert a MoreColors tag into the bytes needed to display the correct colour.
  *
@@ -696,22 +706,62 @@ static int TagToColorBytes(const char[] tag, char[] output, const int maxlength,
     return 2;
   }
   
+  
   // Allow for strlen(tag) override
   if(tagLen <= 0)
-    tagLen = strlen(tag);         // tagLen is copy
-
+    tagLen = strlen(tag);         // tagLen is not reference
+  
+  // Get tag inner text
   int len     = tagLen - 1;       // Remove {}'s (TAG_OPEN/CLOSE_CHAR), Add '\0' 
   char[] name = new char[len];  
   strcopy(name, len, tag[1]);
   
+  /**
+   * Regex Info:
+   * ! -- Complementary Color (Invert Color only)
+   * ^ -- Complementary Color (Invert Color+Alpha)
+   * # -- Name is Hex (6 digits) or 6-digit Hex+Alpha (8 digits) Color
+   * Only 1 invert may be used at a time. Invert will not have an affect on {default} or {teamcolor}
+   * Alpha invert will only work on 8-digit hex codes
+   */
+  
+  // Get tag properties (ints so we can use as string offset)
   int color;
-  if(g_Colors.GetValue(name, color))
+  int inverted  = (name[0] == '!' || name[0] == '^') ? 1 : 0;
+  int hex       = (name[0] == '#' || name[1] == '#') ? 1 : 0;
+  
+  if(hex)
   {
-    Format(output, maxlength, "\x07%06X", color);
-    return 8;
+    // Hex or Hex+Alpha Name Size: (8):"#FF00FF", (9):"!#FF00FF", (10):"#FF00FF33", (11):"!#FF00FF33"
+    if(len >= 8 && len <= 11)
+    {
+      color = StringToInt(name[1 + inverted], 16);            // Offset '!' if there is one
+      
+      // If inverted, invert either preserving alpha or not
+      if(inverted)
+        color ^= (name[0] == '^') ? 0xffffffff : 0xffffff00;  // TODO: Figure out if this has endianness
+      
+      // If Hex+Alpha, do special format and return
+      if(len > 9)
+      {
+        Format(output, maxlength, "\x08%08X", color);
+        return 10;
+      }
+    }
+    else
+      return 0;
+  }
+  else
+  {
+    if(!g_Colors.GetValue(name[inverted], color))
+      return 0;
+      
+    if(inverted)
+      color ^= 0xffffff00; // Invert (always preserve alpha, 0x07 doesnt support it)
   }
 
-  return 0;
+  Format(output, maxlength, "\x07%06X", color);
+  return 8;
 }
 
 
