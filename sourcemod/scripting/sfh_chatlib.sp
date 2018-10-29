@@ -564,8 +564,8 @@ public int Native_TagPrintServer(Handle plugin, int numParams)
 
   char tagBuff[MAX_TAG_LENGTH];
   strcopy(tagBuff, sizeof(tagBuff), g_szTag);
-  RemoveChatColours(tagBuff);
-  RemoveChatColours(message);
+  RemoveChatColours(tagBuff, sizeof(tagBuff));
+  RemoveChatColours(message, sizeof(message));
   PrintToServer("%s%s", tagBuff, message);
   return 0;
 }
