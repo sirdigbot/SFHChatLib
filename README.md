@@ -41,7 +41,7 @@ e.g. `{!cyan}`, `{!#AA00AA}` or `{^#7700FF22}`
 
 ### MoreColors Natives
 
-```
+```sourcepawn
 /**
  * Prints a message to a specific client in the chat area.
  * Supports color tags.
