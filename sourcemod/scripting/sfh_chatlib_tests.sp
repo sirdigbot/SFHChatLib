@@ -169,7 +169,7 @@ public Action CMD_TestPrints(int client, int args)
   int messageIdx = StrContains(argFull, arg3, true) + strlen(arg3) + 1;
   
   int target = 0;
-  if(!StrEqual(arg1, "RCON", true)) // Only really useful for TagPrintToClient and TagPrintToClientEx
+  if(!StrEqual(arg1, "RCON", true))           // Not really useful but it's there I guess
     target = FindTarget(client, arg1, false); // Bots allowed, but will likely not work in most cases. Just for testing.
   if(target == -1)
     return Plugin_Handled; // FindTarget prints message
@@ -203,6 +203,10 @@ public Action CMD_TestPrints(int client, int args)
     TagPrintChatAllEx(author, argFull[messageIdx]);
   else if(StrEqual(arg3, "TagReplyEx", true))
     TagReplyEx(target, author, argFull[messageIdx]);
+  else if(StrEqual(arg3, "TagPrintToAdmins", true))
+    TagPrintToAdmins(ADMFLAG_GENERIC, false, argFull[messageIdx]);
+  else if(StrEqual(arg3, "TagPrintToAdminsEx", true))
+    TagPrintToAdminsEx(author, ADMFLAG_GENERIC, false, argFull[messageIdx]);
     
   // MoreColors Print Natives
   else if(StrEqual(arg3, "CPrintToChat", true))
@@ -219,10 +223,16 @@ public Action CMD_TestPrints(int client, int args)
     CReplyToCommandEx(target, author, argFull[messageIdx]);
   else if(StrEqual(arg3, "CShowActivity", true))
     CShowActivity(target, argFull[messageIdx]);
-  else if(StrEqual(arg3, "CShowActivity2", true)) // CShowActivityEx and CShowActivity2 have identical code
+  else if(StrEqual(arg3, "CShowActivity2", true)) // Note: CShowActivityEx and CShowActivity2 have identical code (minus one function)
     CShowActivity2(target, "{green}TAG {default}", argFull[messageIdx]);
+  else if(StrEqual(arg3, "CShowActivityEx", true))
+    CShowActivityEx(target, "{green}TAG {default}", argFull[messageIdx]);
   else if(StrEqual(arg3, "CSendMessage", true))
     CSendMessage(target, author, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CPrintToAdmins", true))
+    CPrintToAdmins(ADMFLAG_GENERIC, false, argFull[messageIdx]);
+  else if(StrEqual(arg3, "CPrintToAdminsEx", true))
+    CPrintToAdminsEx(author, ADMFLAG_GENERIC, false, argFull[messageIdx]);
   
   
   else
@@ -277,6 +287,7 @@ public Action CMD_TestMoreColors(int client, int args)
   PrintToChat(client, "4. Combo + Combo Trail");
   CPrintToChat(client, "{teamcolor}AB{geld}CD{gold}EF{default}GH");
   CPrintToChat(client, "AB{teamcolor}CD{geld}EF{gold}GH{default}");
+  CPrintToChat(client, "A{red}B{gold}C{red}D{gold}E{red}F{gold}G{red}H{gold}I{red}J{gold}K{red}L{gold}M{red}O{gold}P{red}Q{gold}R{red}S{gold}T{red}U{gold}V{red}W{gold}X{red}Y{gold}Z");
   
   
   PrintToChat(client, "5. Gibberish Parsing");
@@ -284,8 +295,8 @@ public Action CMD_TestMoreColors(int client, int args)
   char correct[] = "\x03\x03\x03a{DEFaULT}AB{-{}a}}}s}]\x01]{a{}}}[[-}43}}{geld}CD{\x07FFD700}EF\x01\x079ACD32GH";
   CReplaceColorCodes(msg);
   PrintToChat(client, "GIBBERISH EQUAL: %i", StrEqual(msg, correct, true));
-  CPrintToChat(client, "PARSE:\n%s", msg);
-  CPrintToChat(client, "VALID:\n%s", correct);
+  PrintToChat(client, "PARSE:\n'%s'", msg); // Regular PrintToChat
+  PrintToChat(client, "VALID:\n'%s'", correct);
   
   return Plugin_Handled;
 }

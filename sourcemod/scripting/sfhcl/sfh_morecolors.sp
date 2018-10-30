@@ -59,6 +59,7 @@
 #define TAG_DEFAULTCOLOR  "{default}"
 #define TAG_TEAMCOLOR     "{teamcolor}"
 #define TAG_REGEX         "{[!\\^]?#?[a-zA-Z0-9]+}"  // Must not allow TAG_OPEN/CLOSE_CHAR
+#define REGEX_MAX_LOOPS   100 // How many times to limit the loop if doing Regex.Match()+while loop. MAX_MESSAGE_LENGTH can fit 85 "{a}".
 
 // Regex Info:
 // ! -- Complementary Color (Invert Color only)
@@ -124,6 +125,8 @@ void SFHCL_MC_CreateNatives()
   CreateNative("CShowActivityEx",     Native_CShowActivityEx);
   CreateNative("CShowActivity2",      Native_CShowActivity2);
   CreateNative("CSendMessage",        Native_CSendMessage);
+  CreateNative("CPrintToAdmins",      Native_CPrintToAdmins);
+  CreateNative("CPrintToAdminsEx",    Native_CPrintToAdminsEx);
   CreateNative("CColorExists",        Native_CColorExists);
   CreateNative("CGetTeamColor",       Native_CGetTeamColor);
   CreateNative("CAddColor",           Native_CAddColor);
@@ -213,9 +216,9 @@ public int Native_CPrintToChatEx(Handle plugin, int numParams)
   if(!IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  if(author < 1 || author > MaxClients)
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
-  if(!IsClientInGame(author))
+  if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
 
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color  
@@ -241,9 +244,9 @@ public int Native_CPrintToChatAllEx(Handle plugin, int numParams)
 
   int author = GetNativeCell(1);
   
-  if(author < 1 || author > MaxClients)     // Can't PrintTochat the server
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
-  if(!IsClientInGame(author))
+  if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
   
   char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
@@ -332,8 +335,7 @@ public int Native_CReplyToCommandEx(Handle plugin, int numParams)
   if(client != 0 && !IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  // Author of 0 will default to client in Internal_CSendMessage
-  if(author < 0 || author > MaxClients)
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
   if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
@@ -382,6 +384,11 @@ public int Native_CShowActivity(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivity");
   
   Internal_ReplaceColors(message, sizeof(message));
+  
+  // TODO / BUG: ShowActivity() doesn't display colors at all (in TF2 at least).
+  // Alternative would be to recreate its behaviour manually,
+  // but CShowActivityEx works fine so honestly just use that instead.
+  
   ShowActivity(client, message);
   return 0;
 }
@@ -478,9 +485,9 @@ public int Native_CSendMessage(Handle plugin, int numParams)
   if(!IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  if(author < 1 || author > MaxClients)
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
-  if(!IsClientInGame(author))
+  if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
   
   char message[MAX_BUFFER_LENGTH]; // No offset/default color since it should be done by here
@@ -491,6 +498,70 @@ public int Native_CSendMessage(Handle plugin, int numParams)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CReplyToCommand");
   
   Internal_CSendMessage(client, author, message, sizeof(message));
+  return 0;
+}
+
+
+
+/* native void CPrintToAdmins(const int flags, const bool rootOverride, const char[] message, any ...); */
+public int Native_CPrintToAdmins(Handle plugin, int numParams)
+{
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return 0;
+  
+  
+  int flags = GetNativeCell(1);
+  bool root = view_as<bool>(GetNativeCell(2));
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  
+  for(int i = 1; i <= MaxClients; ++i)
+  {
+    if(!IsClientInGame(i) || !Internal_IsAdmin(i, flags, root))
+      continue;
+    
+    SetGlobalTransTarget(i);
+    if(FormatNativeString(0, 3, 4, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToAdmins");
+
+    Internal_CSendMessage(i, 0, message, sizeof(message));
+  }
+  return 0;
+}
+
+
+
+/* native void CPrintToAdminsEx(const int author, const int flags, const bool rootOverride, const char[] message, any ...); */
+public int Native_CPrintToAdminsEx(Handle plugin, int numParams)
+{
+  int len;
+  GetNativeStringLength(4, len);
+  if(len <= 0)
+    return 0;
+
+  int author = GetNativeCell(1);
+  
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(author != 0 && !IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+  
+  int flags = GetNativeCell(2);
+  bool root = view_as<bool>(GetNativeCell(3));
+  char message[MAX_BUFFER_LENGTH] = "\x01"; // First byte must be default color
+  
+  for(int i = 1; i <= MaxClients; ++i)
+  {
+    if(!IsClientInGame(i) || !Internal_IsAdmin(i, flags, root))
+      continue;
+    
+    SetGlobalTransTarget(i);
+    if(FormatNativeString(0, 4, 5, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToAdminsEx");
+
+    Internal_CSendMessage(i, author, message, sizeof(message));
+  }
   return 0;
 }
 
@@ -633,6 +704,12 @@ void Internal_ReplaceColors(char[] buffer, const int maxlength)
   int matches = g_TagRegex.MatchAll(buffer);
   for(int i = 0; i < matches; ++i)
   {
+    // TODO / BUG:
+    // Documentation doesn't say that Regex stores copies of its matched strings (though it seems to).
+    // MatchAll() probably repeats already-replaced matches if there are duplicate colors.
+    // As such, a while loop + Regex.Match() would probably be better, but it somehow misses tags.
+    // I haven't been able to get a non-regex method working either so whatever.
+  
     if(!g_TagRegex.GetSubString(0, tag, sizeof(tag), i))
     {
       // GetSubString uses match list from regex handle. If it fails something is really broken.
@@ -640,7 +717,7 @@ void Internal_ReplaceColors(char[] buffer, const int maxlength)
       break;
     }
     
-    // Minor optimisation. Calculate and reuse strlen for ReplaceStringEx
+    // Minor optimisation. Calculate and reuse strlen() for ReplaceStringEx and TagToColorBytes
     int tagLen    = strlen(tag);
     int colorLen  = TagToColorBytes(tag, colorStr, sizeof(colorStr), tagLen) - 1; // -1 for len not size
 
@@ -673,6 +750,27 @@ void Internal_ReplaceColors(char[] buffer, const int maxlength)
     }
   }
   return;
+}
+
+
+/**
+ * Check if a a client in an admin by matching flags,
+ * or having access to the "sm_sfhcl_admin" override.
+ *
+ * Note: Does not perform client validation.
+ * 
+ * @param client          The client to check
+ * @param flags           ADMFLAG_ bitfield
+ * @param rootOverride    If true, root-access will be allowed regardless of flags
+ * @return                True if client has access to the flags or is root
+ */
+bool Internal_IsAdmin(const int client, const int flags, const bool allowRoot)
+{
+  AdminId adm = GetUserAdmin(client);
+  int admFlags = adm.GetFlags(Access_Effective);
+  if(CheckCommandAccess(client, OVERRIDE_SFHCLADMIN, ADMFLAG_BAN))
+    return true;
+  return view_as<bool>((allowRoot && admFlags & view_as<int>(Admin_Root)) || admFlags & flags);
 }
 
 

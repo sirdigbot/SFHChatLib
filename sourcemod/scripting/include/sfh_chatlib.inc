@@ -139,6 +139,31 @@ native void TagActivityEx(const int client, const char[] msg, any ...);
  */
 native void TagPrintServer(const char[] msg, any ...);
 
+/**
+ * Prepends CPrintToAdmins with a coloured command ("[SM]") tag.
+ * Client is also considered admin if they have access to the sm_sfhcl_admin override.
+ * 
+ * @param flags           ADMFLAG_ bitfield
+ * @param rootOverride    If true, root-access will be allowed regardless of flags
+ * @param message         Message to send (formatting rules)
+ * @noreturn
+ */
+native void TagPrintToAdmins(const int flags, const bool rootOverride, const char[] message, any ...);
+
+/**
+ * Prepends CPrintToAdminsEx with a coloured command ("[SM]") tag.
+ * Client is also considered admin if they have access to the sm_sfhcl_admin override.
+ *
+ * @param author          Client to use for {teamcolor}
+ * @param flags           ADMFLAG_ bitfield
+ * @param rootOverride    If true, root-access will be allowed regardless of flags
+ * @param message         Message to send (formatting rules)
+ * @noreturn
+ * 
+ * On error/Errors:     If the author is not connected an error will be thrown.
+ */
+native void TagPrintToAdminsEx(const int author, const int flags, const bool rootOverride, const char[] message, any ...);
+
 
 
 /**
@@ -288,6 +313,33 @@ native void CShowActivity2(const int client, const char[] tag, const char[] mess
 native void CSendMessage(const int client, const int author=0, const char[] message, any ...);
 
 /**
+ * Prints a message to all admins in the chat area, specified by flag.
+ * Client is also considered admin if they have access to the sm_sfhcl_admin override.
+ * Supports color tags.
+ * 
+ * @param flags           ADMFLAG_ bitfield
+ * @param rootOverride    If true, root-access will be allowed regardless of flags
+ * @param message         Message to send (formatting rules)
+ * @noreturn
+ */
+native void CPrintToAdmins(const int flags, const bool rootOverride, const char[] message, any ...);
+
+/**
+ * Prints a message to all admins in the chat area, specified by flag.
+ * Client is also considered admin if they have access to the sm_sfhcl_admin override.
+ * Supports color tags and teamcolor tag.
+ *
+ * @param author          Client to use for {teamcolor}
+ * @param flags           ADMFLAG_ bitfield
+ * @param rootOverride    If true, root-access will be allowed regardless of flags
+ * @param message         Message to send (formatting rules)
+ * @noreturn
+ * 
+ * On error/Errors:     If the author is not connected an error will be thrown.
+ */
+native void CPrintToAdminsEx(const int author, const int flags, const bool rootOverride, const char[] message, any ...);
+
+/**
  * Determines whether a color name exists
  * 
  * @param color         The color name to check
@@ -367,6 +419,8 @@ public __pl_sfh_chatlib_SetNTVOptional()
   MarkNativeAsOptional("TagPrintChatAllEx");
   MarkNativeAsOptional("TagReplyEx");
   MarkNativeAsOptional("TagActivityEx");
+  MarkNativeAsOptional("TagPrintToAdmins");
+  MarkNativeAsOptional("TagPrintToAdminsEx");
   
   MarkNativeAsOptional("SFHCL_RemoveColours");
   MarkNativeAsOptional("SFHCL_IsSingleByteColour");
@@ -383,6 +437,8 @@ public __pl_sfh_chatlib_SetNTVOptional()
   MarkNativeAsOptional("CShowActivityEx");
   MarkNativeAsOptional("CShowActivity2");
   MarkNativeAsOptional("CSendMessage");
+  MarkNativeAsOptional("CPrintToAdmins");
+  MarkNativeAsOptional("CPrintToAdminsEx");
   MarkNativeAsOptional("CColorExists");
   MarkNativeAsOptional("CGetTeamColor");
   MarkNativeAsOptional("CAddColor");

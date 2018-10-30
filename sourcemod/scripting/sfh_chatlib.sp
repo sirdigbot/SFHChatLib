@@ -30,6 +30,8 @@
 #define DEFAULT_USAGE_TAG "\x04[SM]\x05"
 
 
+#define OVERRIDE_SFHCLADMIN "sm_sfhcl_admin" // Override access to Internal_IsAdmin
+
 
 //=================================
 // Globals
@@ -39,7 +41,7 @@ EngineVersion g_Engine; // Used by MoreColors
 
 Handle  h_szTag           = null;
 char    g_szTag[MAX_TAG_LENGTH];
-int     g_iTagLength      = 0;
+int     g_iTagLength      = 0;        // Cached strlen() of g_szTag
 Handle  h_szUsageTag      = null;
 char    g_szUsageTag[MAX_TAG_LENGTH]; // Must account for SFHCL_Usage translation
 int     g_iUsageTagLength = 0;
@@ -86,6 +88,8 @@ public APLRes AskPluginLoad2(Handle self, bool late, char[] err, int err_max)
   CreateNative("TagPrintChatAllEx",   Native_TagPrintChatAllEx);
   CreateNative("TagReplyEx",          Native_TagReplyEx);
   CreateNative("TagActivityEx",       Native_TagActivityEx);
+  CreateNative("TagPrintToAdmins",    Native_TagPrintToAdmins);
+  CreateNative("TagPrintToAdminsEx",  Native_TagPrintToAdminsEx);
   
   // Misc Natives
   CreateNative("SFHCL_RemoveColours",       Native_SFHCL_RemoveColours);
@@ -123,6 +127,11 @@ public void OnPluginStart()
   HookConVarChange(h_szUsageTag, UpdateCvars);
   
   SFHCL_MC_OnPluginStart();
+  
+  /**
+   * Overrides
+   * OVERRIDE_SFHCLADMIN -- Client is considered an admin to C/TagPrintToAdmins
+   */
 
   PrintToServer("%T", "SFHCL_PluginLoaded", LANG_SERVER);
 }
@@ -246,8 +255,7 @@ public int Native_TagReplyEx(Handle plugin, int numParams)
   if(client != 0 && !IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  // Author of 0 will default to client in Internal_CSendMessage
-  if(author < 0 || author > MaxClients)
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
   if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
@@ -329,8 +337,7 @@ public int Native_TagReplyUsageEx(Handle plugin, int numParams)
   if(client != 0 && !IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  // Author of 0 will default to client in Internal_CSendMessage
-  if(author < 0 || author > MaxClients)
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
   if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
@@ -404,9 +411,9 @@ public int Native_TagPrintChatEx(Handle plugin, int numParams)
   if(!IsClientInGame(client))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER); // Common.phrases.txt
     
-  if(author < 1 || author > MaxClients)
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
-  if(!IsClientInGame(author))
+  if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
 
   char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
@@ -463,9 +470,9 @@ public int Native_TagPrintChatAllEx(Handle plugin, int numParams)
 
   int author = GetNativeCell(1);
   
-  if(author < 1 || author > MaxClients)     // Can't PrintTochat the server
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
-  if(!IsClientInGame(author))
+  if(author != 0 && !IsClientInGame(author))
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
   
   char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
@@ -559,7 +566,7 @@ public int Native_TagPrintServer(Handle plugin, int numParams)
     return 0;
     
   char message[MAX_MESSAGE_LENGTH]; // No colours, no need for MAX_BUFFER_LENGTH
-  if(FormatNativeString(0, 1, 2, len, _, message) != SP_ERROR_NONE)
+  if(FormatNativeString(0, 1, 2, sizeof(message), _, message) != SP_ERROR_NONE)
     return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintServer");
 
   char tagBuff[MAX_TAG_LENGTH];
@@ -567,6 +574,71 @@ public int Native_TagPrintServer(Handle plugin, int numParams)
   RemoveChatColours(tagBuff, sizeof(tagBuff));
   RemoveChatColours(message, sizeof(message));
   PrintToServer("%s%s", tagBuff, message);
+  return 0;
+}
+
+
+
+/* native void TagPrintToAdmins(const int flags, const bool rootOverride, const char[] message, any ...); */
+public int Native_TagPrintToAdmins(Handle plugin, int numParams)
+{
+  int len;
+  GetNativeStringLength(3, len);
+  if(len <= 0)
+    return 0;
+
+  int flags = GetNativeCell(1);
+  bool root = view_as<bool>(GetNativeCell(2));
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  for(int i = 1; i <= MaxClients; ++i)
+  {
+    if(!IsClientInGame(i) || !Internal_IsAdmin(i, flags, root))
+      continue;
+    
+    SetGlobalTransTarget(i);
+    if(FormatNativeString(0, 3, 4, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintToAdmins");
+
+    Internal_CSendMessage(i, 0, message, sizeof(message));
+  }
+  return 0;
+}
+
+
+
+/* native void TagPrintToAdminsEx(const int author, const int flags, const bool rootOverride, const char[] message, any ...); */
+public int Native_TagPrintToAdminsEx(Handle plugin, int numParams)
+{
+  int len;
+  GetNativeStringLength(4, len);
+  if(len <= 0)
+    return 0;
+
+  int author = GetNativeCell(1);
+  
+  if(author < 0 || author > MaxClients)     // Author of 0 defaults to receiving client
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_InvalidClient", LANG_SERVER, author);
+  if(author != 0 && !IsClientInGame(author))
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "Target is not in game", LANG_SERVER);
+  
+  int flags = GetNativeCell(2);
+  bool root = view_as<bool>(GetNativeCell(3));
+  char message[MAX_BUFFER_LENGTH] = "\x01";           // First byte must be default color
+  strcopy(message[1], sizeof(message) - 1, g_szTag);  // Append preprocessed tag after default color
+  
+  for(int i = 1; i <= MaxClients; ++i)
+  {
+    if(!IsClientInGame(i) || !Internal_IsAdmin(i, flags, root))
+      continue;
+    
+    SetGlobalTransTarget(i);
+    if(FormatNativeString(0, 4, 5, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintToAdminsEx");
+
+    Internal_CSendMessage(i, author, message, sizeof(message));
+  }
   return 0;
 }
 
