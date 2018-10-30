@@ -258,7 +258,7 @@ public int Native_TagReplyEx(Handle plugin, int numParams)
   // Set translation target before formatting message
   SetGlobalTransTarget((client) ? client : LANG_SERVER);
   if(FormatNativeString(0, 3, 4, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyEx");
 
   if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
@@ -296,7 +296,7 @@ public int Native_TagReplyUsage(Handle plugin, int numParams)
   // Set translation target before formatting message. Offset format by tag and '\x01'
   SetGlobalTransTarget((client) ? client : LANG_SERVER);
   if(FormatNativeString(0, 2, 3, sizeof(message) - g_iUsageTagLength - 1, _, message[g_iUsageTagLength + 1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReply");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyUsage");
 
   if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
@@ -341,7 +341,7 @@ public int Native_TagReplyUsageEx(Handle plugin, int numParams)
   // Set translation target before formatting message
   SetGlobalTransTarget((client) ? client : LANG_SERVER);
   if(FormatNativeString(0, 3, 4, sizeof(message) - g_iUsageTagLength - 1, _, message[g_iUsageTagLength + 1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagReplyUsageEx");
 
   if(!client || GetCmdReplySource() == SM_REPLY_TO_CONSOLE)
   {
@@ -379,7 +379,7 @@ public int Native_TagPrintChat(Handle plugin, int numParams)
   // Set translation target before formatting message
   SetGlobalTransTarget(client);
   if(FormatNativeString(0, 2, 3, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChat");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChat");
 
   Internal_CSendMessage(client, 0, message, sizeof(message));
   return 0;
@@ -415,7 +415,7 @@ public int Native_TagPrintChatEx(Handle plugin, int numParams)
   // Set translation target before formatting message
   SetGlobalTransTarget(client);
   if(FormatNativeString(0, 3, 4, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatEx");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatEx");
 
   Internal_CSendMessage(client, author, message, sizeof(message));
   return 0;
@@ -444,7 +444,7 @@ public int Native_TagPrintChatAll(Handle plugin, int numParams)
     
     SetGlobalTransTarget(i);
     if(FormatNativeString(0, 1, 2, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
-      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAll");
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatAll");
 
     Internal_CSendMessage(i, 0, message, sizeof(message));
   }
@@ -481,7 +481,7 @@ public int Native_TagPrintChatAllEx(Handle plugin, int numParams)
     
     SetGlobalTransTarget(i);
     if(FormatNativeString(0, 2, 3, sizeof(message) - g_iTagLength - 1, _, message[g_iTagLength + 1]) != SP_ERROR_NONE)
-      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CPrintToChatAllEx");
+      return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagPrintChatAllEx");
 
     Internal_CSendMessage(i, author, message, sizeof(message));
   }
@@ -511,7 +511,7 @@ public int Native_TagActivity2(Handle plugin, int numParams)
   // Set translation target before formatting message
   SetGlobalTransTarget(LANG_SERVER);
   if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivityEx");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagActivity2");
   
   Internal_ReplaceColors(message, sizeof(message));
   ShowActivity2(client, g_szTag, message);
@@ -541,7 +541,7 @@ public int Native_TagActivityEx(Handle plugin, int numParams)
   // Set translation target before formatting message
   SetGlobalTransTarget(LANG_SERVER);
   if(FormatNativeString(0, 2, 3, sizeof(message) - 1, _, message[1]) != SP_ERROR_NONE)
-    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "CShowActivityEx");
+    return ThrowNativeError(SP_ERROR_NATIVE, "%T", "SFHCL_FormatError", LANG_SERVER, "TagActivityEx");
   
   Internal_ReplaceColors(message, sizeof(message));
   ShowActivityEx(client, g_szTag, message);
