@@ -704,12 +704,11 @@ void Internal_ReplaceColors(char[] buffer, const int maxlength)
   int matches = g_TagRegex.MatchAll(buffer);
   for(int i = 0; i < matches; ++i)
   {
-    // TODO / BUG:
-    // Documentation doesn't say that Regex stores copies of its matched strings (though it seems to).
-    // MatchAll() probably repeats already-replaced matches if there are duplicate colors.
-    // As such, a while loop + Regex.Match() would probably be better, but it somehow misses tags.
-    // I haven't been able to get a non-regex method working either so whatever.
-  
+    // It's safe to use Regex.MatchAll and modify the input string. RegEx stores its own copy.
+    // See the subject member being set in RegEx::MatchAll
+    // https://github.com/alliedmodders/sourcemod/blob/master/extensions/regex/CRegEx.cpp
+    // Although, using MatchAll means this loop will duplicate check already-replaced tags.
+    
     if(!g_TagRegex.GetSubString(0, tag, sizeof(tag), i))
     {
       // GetSubString uses match list from regex handle. If it fails something is really broken.
