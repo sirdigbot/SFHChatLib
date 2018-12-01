@@ -5,7 +5,9 @@ A full native reimplementation of [MoreColors v1.9.1](https://forums.alliedmods.
 Includes a set of shortcut functions for displaying coloured messages to players prepended with a customiseable and colour-supporting `[SM]` tag.  
 Automatically removes colours when printing to rcon/console.  
 
-Note: The *Ex* natives are identical as the non-ex counterparts, but with support for controlling `{teamcolor}`  
+Notes:  
+- The *Ex* natives are identical as the non-ex counterparts, but with support for controlling `{teamcolor}`  
+- Players must have access to the `sm_sfhcl_admin` override to be considered an admin to C/TagPrintToAdmins  
 
 [MoreColors](#morecolors)  
 [TagReply*](#tagreply)  

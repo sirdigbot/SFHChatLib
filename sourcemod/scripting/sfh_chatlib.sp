@@ -51,7 +51,14 @@ int     g_iUsageTagLength = 0;
 #include "sfhcl/sfh_morecolors.sp"    // Add MoreColors Native Reimplementation
 
 
-
+/**
+ * KNOWN BUGS
+ * - The ShowActivity natives dont translate properly because they only translate once
+ *   and not per user.
+ * - CShowActivity does not handle color at all.
+ *
+ * To fix the 2 above, you need to manually reimplement all ShowActivity commands.
+ */
 public Plugin myinfo =
 {
   name =        "[TF2] Satan's Fun House - Chat Library",
@@ -130,7 +137,7 @@ public void OnPluginStart()
   
   /**
    * Overrides
-   * OVERRIDE_SFHCLADMIN -- Client is considered an admin to C/TagPrintToAdmins
+   * sm_sfhcl_admin -- Client is considered an admin to C/TagPrintToAdmins
    */
 
   PrintToServer("%T", "SFHCL_PluginLoaded", LANG_SERVER);

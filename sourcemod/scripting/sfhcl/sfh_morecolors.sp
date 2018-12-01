@@ -721,7 +721,7 @@ void Internal_ReplaceColors(char[] buffer, const int maxlength)
     int colorLen  = TagToColorBytes(tag, colorStr, sizeof(colorStr), tagLen) - 1; // -1 for len not size
 
     if(colorLen > 0)
-      ReplaceStringEx(buffer, maxlength, tag, colorStr, tagLen, colorLen);
+      ReplaceStringEx(buffer, maxlength, tag, colorStr, tagLen, colorLen); // ReplaceStringEx is better here as it wont sporadically change colors if buffer limit is reached
   }
   
   // Trim colours from the end of the message (if replacements were done)
