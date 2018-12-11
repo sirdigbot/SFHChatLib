@@ -10,10 +10,10 @@ Notes:
 - Players must have access to the `sm_sfhcl_admin` override to be considered an admin to C/TagPrintToAdmins  
 
 [MoreColors](#morecolors)  
-[TagReply*](#tagreply)  
-[TagPrintToChat*](#tagprintchat)  
-[TagActivity*](#tagactivity)  
-[TagPrint*](#tagprint)  
+[TagReply\*](#tagreply)  
+[TagPrintToChat\*](#tagprintchat)  
+[TagActivity\*](#tagactivity)  
+[TagPrint\*](#tagprint)  
 [ChatLib Misc](#misc)  
 
 
