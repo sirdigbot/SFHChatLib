@@ -9,6 +9,7 @@ Notes:
 - The *Ex* natives are identical as the non-ex counterparts, but with support for controlling `{teamcolor}`  
 - Players must have access to the `sm_sfhcl_admin` override to be considered an admin to C/TagPrintToAdmins  
 
+### Native Groups
 [MoreColors](#morecolors)  
 [TagReply\*](#tagreply)  
 [TagPrintToChat\*](#tagprintchat)  
